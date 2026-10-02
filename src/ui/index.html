@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src * data:; style-src 'self'">
+  <title>Navegador</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="tabbar">
+    <div id="tabs"></div>
+    <button id="new-tab" class="icon" title="Nueva pestaña (Ctrl+T)">＋</button>
+  </div>
+
+  <div id="navbar">
+    <button id="back" class="icon" title="Atrás (Alt+←)">←</button>
+    <button id="forward" class="icon" title="Adelante (Alt+→)">→</button>
+    <button id="reload" class="icon" title="Recargar (Ctrl+R)">↻</button>
+    <form id="address-form">
+      <input id="address" type="text" spellcheck="false" placeholder="Busca o escribe una dirección">
+      <button id="star" type="button" class="icon" title="Añadir a favoritos (Ctrl+D)">☆</button>
+    </form>
+    <button id="bookmarks-btn" class="icon" title="Favoritos (Ctrl+Shift+O)">★</button>
+    <button id="downloads-btn" class="icon" title="Descargas (Ctrl+J)">⤓<span id="dl-badge" hidden></span></button>
+  </div>
+
+  <aside id="panel" hidden>
+    <header>
+      <h2 id="panel-title"></h2>
+      <button id="panel-clear" class="text" hidden>Limpiar</button>
+      <button id="panel-close" class="icon" title="Cerrar">✕</button>
+    </header>
+    <ul id="panel-list"></ul>
+    <p id="panel-empty" hidden></p>
+  </aside>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

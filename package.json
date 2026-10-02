@@ -1,0 +1,23 @@
+{
+  "name": "navegador",
+  "version": "1.0.0",
+  "description": "Navegador web minimalista basado en Chromium (Electron): pestañas, atrás/adelante, favoritos y descargas.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "dev.hjp.navegador",
+    "productName": "Navegador",
+    "files": ["src/**/*", "package.json"],
+    "linux": { "target": ["AppImage"] },
+    "win": { "target": ["nsis"] },
+    "mac": { "target": ["dmg"] }
+  }
+}
