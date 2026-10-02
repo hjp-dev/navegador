@@ -18,7 +18,19 @@ npm start                    # abre la página de inicio
 npm start -- wikipedia.org   # abre una URL concreta
 ```
 
-### Crear un ejecutable
+### Descargar el instalador de Windows
+
+Cada vez que se suben cambios a GitHub, la acción **Instalador de Windows** genera
+`Navegador Setup x.y.z.exe`. Para descargarlo: pestaña **Actions** del repositorio →
+última ejecución de *Instalador de Windows* → sección **Artifacts** → `Navegador-Setup-Windows`.
+
+Si subes una etiqueta (`git tag v1.0.0 && git push --tags`), el instalador se publica
+también en la sección **Releases**.
+
+Al ejecutarlo, Windows puede mostrar el aviso de SmartScreen porque el instalador no está
+firmado: pulsa *Más información* → *Ejecutar de todas formas*.
+
+### Crear un ejecutable localmente
 
 ```bash
 npm run dist   # genera un instalador en dist/ (AppImage, .exe o .dmg según tu sistema)
