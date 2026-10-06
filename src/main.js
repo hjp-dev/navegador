@@ -204,6 +204,7 @@ function createWindow() {
     minHeight: 300,
     title: 'Navegador',
     backgroundColor: '#ffffff',
+    autoHideMenuBar: true, // el menú solo existe para los atajos de teclado
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

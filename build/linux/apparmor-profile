@@ -1,0 +1,9 @@
+# Permite al sandbox de Chromium crear user namespaces en Ubuntu 23.10+
+abi <abi/4.0>,
+include <tunables/global>
+
+profile navegador /opt/Navegador/navegador flags=(unconfined) {
+  userns,
+
+  include if exists <local/navegador>
+}
