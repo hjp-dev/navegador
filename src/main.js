@@ -205,6 +205,7 @@ function createWindow() {
     title: 'Navegador',
     backgroundColor: '#ffffff',
     autoHideMenuBar: true, // el menú solo existe para los atajos de teclado
+    icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
