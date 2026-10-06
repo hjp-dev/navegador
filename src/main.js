@@ -1,17 +1,19 @@
-const { app, BrowserWindow, WebContentsView, ipcMain, Menu, shell, session } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, Menu, shell, session, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const passwords = require('./passwords');
 
 const HOME_URL = 'https://www.google.com';
 const SEARCH_URL = 'https://www.google.com/search?q=';
-const TOOLBAR_HEIGHT = 76; // barra de pestañas + barra de navegación
-const PANEL_WIDTH = 320;   // panel lateral de favoritos/descargas
+const PANEL_WIDTH = 320;   // panel lateral de favoritos/descargas/contraseñas
 
 let win;
 let tabs = [];          // { id, view }
 let activeId = null;
 let nextTabId = 1;
 let panelOpen = false;
+let modalOpen = false;  // diálogo de usuario/contraseña del sitio (oculta la página)
+let chromeHeight = 76;  // alto de la interfaz superior (pestañas + navegación + avisos)
 
 // ---------- Favoritos (persistidos en JSON) ----------
 const bookmarksFile = () => path.join(app.getPath('userData'), 'favoritos.json');
@@ -44,11 +46,25 @@ function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
 
+// Direcciones de red interna: IPs privadas, CGNAT (100.64/10), localhost y nombres locales
+function isPrivateHost(host) {
+  host = host.replace(/^\[|\]$/g, '').toLowerCase();
+  if (host === 'localhost') return true;
+  if (/\.(local|lan|home|internal|localdomain|home\.arpa)$/.test(host)) return true;
+  const ip = host.match(/^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/);
+  if (!ip) return false;
+  const [a, b] = [Number(ip[1]), Number(ip[2])];
+  return a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)
+    || (a === 169 && b === 254) || (a === 100 && b >= 64 && b <= 127);
+}
+
 function normalizeInput(input) {
   const text = input.trim();
   if (!text) return HOME_URL;
-  if (/^[a-z][a-z0-9+.-]*:/i.test(text)) return text;            // ya tiene esquema
-  if (/^(localhost|\d{1,3}(\.\d{1,3}){3})(:\d+)?(\/|$)/i.test(text)) return 'http://' + text;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(text) || /^(about|data|file|view-source):/i.test(text)) return text; // ya tiene esquema
+  // Routers, ONUs y demás equipos de la red interna: http directo
+  const host = text.match(/^([^/:?#\s]+)(:\d+)?([/?#]|$)/)?.[1];
+  if (host && (isPrivateHost(host) || /^\d{1,3}(\.\d{1,3}){3}$/.test(host))) return 'http://' + text;
   if (!/\s/.test(text) && /\.[a-z]{2,}(:\d+)?(\/|$)/i.test(text)) return 'https://' + text;
   return SEARCH_URL + encodeURIComponent(text);
 }
@@ -76,6 +92,8 @@ function tabInfo(tab) {
     canGoBack: wc.navigationHistory.canGoBack(),
     canGoForward: wc.navigationHistory.canGoForward(),
     favicon: tab.favicon || null,
+    savedLogins: originOf(wc.getURL()) ? passwords.forOrigin(originOf(wc.getURL())).length : 0,
+    pwPrompt: tab.pwPrompt ? { origin: tab.pwPrompt.origin, username: tab.pwPrompt.username, update: tab.pwPrompt.update } : null,
   };
 }
 
@@ -83,20 +101,35 @@ function sendTabs() {
   send('tabs', { tabs: tabs.map(tabInfo), activeId, bookmarks });
 }
 
+function originOf(url) {
+  try {
+    const origin = new URL(url).origin;
+    return origin === 'null' ? null : origin;
+  } catch {
+    return null;
+  }
+}
+
 function layout() {
   const tab = activeTab();
   if (!win || !tab) return;
   const [width, height] = win.getContentSize();
   const w = panelOpen ? Math.max(0, width - PANEL_WIDTH) : width;
-  tab.view.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width: w, height: Math.max(0, height - TOOLBAR_HEIGHT) });
+  tab.view.setBounds({ x: 0, y: chromeHeight, width: w, height: Math.max(0, height - chromeHeight) });
+  tab.view.setVisible(!modalOpen);
 }
 
 // ---------- Pestañas ----------
 function createTab(url = HOME_URL, activate = true) {
   const view = new WebContentsView({
-    webPreferences: { contextIsolation: true, sandbox: true },
+    webPreferences: {
+      preload: path.join(__dirname, 'page-preload.js'),
+      nodeIntegrationInSubFrames: true, // el preload también corre en iframes (muchos routers los usan)
+      contextIsolation: true,
+      sandbox: true,
+    },
   });
-  const tab = { id: nextTabId++, view, favicon: null };
+  const tab = { id: nextTabId++, view, favicon: null, pwPrompt: null };
   tabs.push(tab);
 
   const wc = view.webContents;
@@ -104,7 +137,10 @@ function createTab(url = HOME_URL, activate = true) {
   wc.on('page-title-updated', update);
   wc.on('did-start-loading', update);
   wc.on('did-stop-loading', update);
-  wc.on('did-navigate', update);
+  wc.on('did-navigate', (_e, _url, code) => {
+    if (code !== 401) clearAuthAttempts(wc.id);
+    update();
+  });
   wc.on('did-navigate-in-page', update);
   wc.on('page-favicon-updated', (_e, favicons) => {
     tab.favicon = favicons[0] || null;
@@ -182,6 +218,7 @@ function createWindow() {
     const arg = process.argv.slice(app.isPackaged ? 1 : 2).find(a => !a.startsWith('-'));
     createTab(arg ? normalizeInput(arg) : HOME_URL);
     sendDownloads();
+    sendPasswords();
   });
   win.on('closed', () => {
     win = null;
@@ -209,6 +246,7 @@ function buildMenu() {
         { label: 'Añadir/quitar favorito', accelerator: 'CmdOrCtrl+D', click: () => toggleBookmark() },
         { label: 'Favoritos', accelerator: 'CmdOrCtrl+Shift+O', click: () => send('show-panel', 'bookmarks') },
         { label: 'Descargas', accelerator: 'CmdOrCtrl+J', click: () => send('show-panel', 'downloads') },
+        { label: 'Contraseñas', accelerator: 'CmdOrCtrl+Shift+P', click: () => send('show-panel', 'passwords') },
         { type: 'separator' },
         { label: 'Herramientas de desarrollo', accelerator: 'F12', click: () => wc()?.toggleDevTools() },
         { role: 'quit', label: 'Salir' },
@@ -278,19 +316,24 @@ function setupDownloads() {
 }
 
 // ---------- IPC desde la interfaz ----------
-ipcMain.on('navigate', (_e, input) => {
+// Solo se aceptan mensajes de la interfaz del navegador, nunca de las páginas web
+const ui = {
+  on: (channel, fn) => ipcMain.on(channel, (e, ...args) => { if (win && e.sender === win.webContents) fn(e, ...args); }),
+};
+
+ui.on('navigate', (_e, input) => {
   const tab = activeTab();
   if (tab) tab.view.webContents.loadURL(normalizeInput(input));
 });
-ipcMain.on('back', () => activeTab()?.view.webContents.navigationHistory.goBack());
-ipcMain.on('forward', () => activeTab()?.view.webContents.navigationHistory.goForward());
-ipcMain.on('reload', () => {
+ui.on('back', () => activeTab()?.view.webContents.navigationHistory.goBack());
+ui.on('forward', () => activeTab()?.view.webContents.navigationHistory.goForward());
+ui.on('reload', () => {
   const wc = activeTab()?.view.webContents;
   if (!wc) return;
   if (wc.isLoading()) wc.stop();
   else wc.reload();
 });
-ipcMain.on('new-tab', (_e, url) => {
+ui.on('new-tab', (_e, url) => {
   if (url) {
     createTab(normalizeInput(url));
   } else {
@@ -298,23 +341,32 @@ ipcMain.on('new-tab', (_e, url) => {
     focusAddress();
   }
 });
-ipcMain.on('close-tab', (_e, id) => closeTab(id));
-ipcMain.on('activate-tab', (_e, id) => activateTab(id));
-ipcMain.on('toggle-bookmark', () => toggleBookmark());
-ipcMain.on('remove-bookmark', (_e, url) => {
+ui.on('close-tab', (_e, id) => closeTab(id));
+ui.on('activate-tab', (_e, id) => activateTab(id));
+ui.on('toggle-bookmark', () => toggleBookmark());
+ui.on('remove-bookmark', (_e, url) => {
   bookmarks = bookmarks.filter(b => b.url !== url);
   saveBookmarks(bookmarks);
   sendTabs();
 });
-ipcMain.on('open-bookmark', (_e, url) => {
+ui.on('open-bookmark', (_e, url) => {
   const tab = activeTab();
   if (tab) tab.view.webContents.loadURL(url);
 });
-ipcMain.on('panel', (_e, open) => {
+ui.on('panel', (_e, open) => {
   panelOpen = !!open;
   layout();
 });
-ipcMain.on('download-action', (_e, { id, action }) => {
+ui.on('chrome-height', (_e, h) => {
+  chromeHeight = Math.max(0, Math.round(Number(h) || 0));
+  layout();
+});
+ui.on('modal', (_e, open) => {
+  modalOpen = !!open;
+  layout();
+  if (!modalOpen) activeTab()?.view.webContents.focus();
+});
+ui.on('download-action', (_e, { id, action }) => {
   const dl = downloads.find(d => d.id === id);
   if (!dl) return;
   const item = downloadItems.get(id);
@@ -331,14 +383,125 @@ ipcMain.on('download-action', (_e, { id, action }) => {
       break;
   }
 });
-ipcMain.on('clear-downloads', () => {
+ui.on('clear-downloads', () => {
   downloads = downloads.filter(d => d.state === 'progressing' || d.state === 'paused');
   sendDownloads();
+});
+
+// ---------- Contraseñas ----------
+function sendPasswords() {
+  send('passwords', passwords.list());
+  sendTabs();
+}
+
+// El origen se toma siempre del marco real que envía el mensaje, nunca de lo que diga la página
+ipcMain.handle('pw:get', (e) => {
+  const origin = originOf(e.senderFrame?.url);
+  return origin ? passwords.forOrigin(origin) : [];
+});
+
+ipcMain.on('pw:submitted', (e, credential) => {
+  const tab = tabs.find(t => t.view.webContents === e.sender);
+  const origin = originOf(e.senderFrame?.url);
+  if (!tab || !origin || typeof credential?.password !== 'string' || !credential.password) return;
+  const username = String(credential.username || '');
+  const status = passwords.status(origin, username, credential.password);
+  if (status === 'same') {
+    passwords.touch(origin, username);
+    return;
+  }
+  if (passwords.isNever(origin)) return;
+  tab.pwPrompt = { origin, username, password: credential.password, update: status === 'update' };
+  sendTabs();
+});
+
+ui.on('pw-prompt', (_e, { tabId, action }) => {
+  const tab = getTab(tabId);
+  const prompt = tab?.pwPrompt;
+  if (!prompt) return;
+  tab.pwPrompt = null;
+  if (action === 'save') passwords.save(prompt.origin, prompt.username, prompt.password);
+  if (action === 'never') passwords.setNever(prompt.origin);
+  sendPasswords();
+});
+
+ui.on('pw-fill', (_e, id) => {
+  const credential = passwords.get(id);
+  const wc = activeTab()?.view.webContents;
+  if (!credential || !wc) return;
+  for (const frame of wc.mainFrame.framesInSubtree) {
+    if (originOf(frame.url) === credential.origin) frame.send('pw:fill', credential);
+  }
+  passwords.touch(credential.origin, credential.username);
+});
+
+ui.on('pw-copy', (_e, id) => {
+  const credential = passwords.get(id);
+  if (credential) clipboard.writeText(credential.password);
+});
+
+ui.on('pw-remove', (_e, id) => {
+  passwords.remove(id);
+  sendPasswords();
+});
+
+// ---------- Autenticación HTTP ----------
+// La ventanita de usuario/contraseña que usan muchos routers y ONUs
+const authRequests = new Map(); // id -> { callback, origin, isProxy }
+const authAttempts = new Set(); // `${wcId}|${origin}` ya probados con la contraseña guardada
+let nextAuthId = 1;
+
+function clearAuthAttempts(wcId) {
+  for (const key of authAttempts) if (key.startsWith(wcId + '|')) authAttempts.delete(key);
+}
+
+app.on('login', (event, webContents, details, authInfo, callback) => {
+  event.preventDefault();
+  const origin = originOf(details.url) || `${authInfo.scheme}://${authInfo.host}:${authInfo.port}`;
+  const saved = authInfo.isProxy ? [] : passwords.forOrigin(origin);
+  const key = `${webContents?.id}|${origin}`;
+
+  // Primer intento: usar la contraseña guardada sin preguntar
+  if (saved.length && !authAttempts.has(key)) {
+    authAttempts.add(key);
+    callback(saved[0].username, saved[0].password);
+    return;
+  }
+
+  const id = nextAuthId++;
+  authRequests.set(id, { callback, origin, isProxy: authInfo.isProxy });
+  const tab = tabs.find(t => t.view.webContents === webContents);
+  if (tab && tab.id !== activeId) activateTab(tab.id);
+  send('auth-request', {
+    id,
+    origin,
+    realm: authInfo.realm || '',
+    isProxy: authInfo.isProxy,
+    username: saved[0]?.username || '',
+    failed: authAttempts.has(key),
+  });
+  authAttempts.add(key);
+});
+
+ui.on('auth-response', (_e, { id, username, password, remember }) => {
+  const request = authRequests.get(id);
+  if (!request) return;
+  authRequests.delete(id);
+  if (username === undefined) {
+    request.callback(); // cancelado
+    return;
+  }
+  if (remember && !request.isProxy) {
+    passwords.save(request.origin, String(username), String(password));
+    sendPasswords();
+  }
+  request.callback(String(username), String(password));
 });
 
 // ---------- Arranque ----------
 app.whenReady().then(() => {
   bookmarks = loadBookmarks();
+  passwords.load();
   buildMenu();
   setupDownloads();
   createWindow();

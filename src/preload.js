@@ -16,8 +16,15 @@ contextBridge.exposeInMainWorld('browser', {
   setPanel: send('panel'),
   downloadAction: send('download-action'),
   clearDownloads: send('clear-downloads'),
+  setChromeHeight: send('chrome-height'),
+  setModal: send('modal'),
+  passwordPrompt: send('pw-prompt'),
+  fillPassword: send('pw-fill'),
+  copyPassword: send('pw-copy'),
+  removePassword: send('pw-remove'),
+  authResponse: send('auth-response'),
   on: (channel, callback) => {
-    const allowed = ['tabs', 'downloads', 'show-panel', 'focus-address'];
+    const allowed = ['tabs', 'downloads', 'passwords', 'show-panel', 'focus-address', 'auth-request'];
     if (allowed.includes(channel)) ipcRenderer.on(channel, (_e, data) => callback(data));
   },
 });

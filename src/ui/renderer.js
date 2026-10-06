@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 
-const state = { tabs: [], activeId: null, bookmarks: [], downloads: [], panel: null };
+const state = { tabs: [], activeId: null, bookmarks: [], downloads: [], passwords: [], panel: null };
 
 const address = $('address');
 let editingAddress = false;
@@ -61,7 +61,22 @@ function renderNavbar() {
   $('star').title = starred ? 'Quitar de favoritos (Ctrl+D)' : 'Añadir a favoritos (Ctrl+D)';
 
   document.title = tab ? `${tab.title} - Navegador` : 'Navegador';
+
+  $('pw-badge').hidden = !tab?.savedLogins;
+
+  // Aviso "¿Guardar contraseña?" de la pestaña activa
+  const prompt = tab?.pwPrompt;
+  $('infobar').hidden = !prompt;
+  if (prompt) {
+    const who = prompt.username ? `de «${prompt.username}» ` : '';
+    $('infobar-text').textContent = prompt.update
+      ? `¿Actualizar la contraseña ${who}para ${prompt.origin}?`
+      : `¿Guardar la contraseña ${who}para ${prompt.origin}?`;
+    $('pw-save').textContent = prompt.update ? 'Actualizar' : 'Guardar';
+  }
 }
+
+const originOf = (url) => { try { return new URL(url).origin; } catch { return null; } };
 
 // ---------- Panel lateral ----------
 function openPanel(name) {
@@ -99,6 +114,20 @@ function renderPanel() {
       return item;
     }));
     empty.hidden = state.bookmarks.length > 0;
+  } else if (state.panel === 'passwords') {
+    $('panel-title').textContent = 'Contraseñas';
+    $('panel-clear').hidden = true;
+    empty.textContent = 'No hay contraseñas guardadas. Al iniciar sesión en un sitio se te ofrecerá guardarla.';
+    const here = originOf(activeTab()?.url);
+    const mine = state.passwords.filter(p => p.origin === here);
+    const others = state.passwords.filter(p => p.origin !== here);
+    list.replaceChildren(...[
+      mine.length ? el('li', { className: 'section', textContent: 'Este sitio' }) : null,
+      ...mine.map(p => renderPassword(p, true)),
+      mine.length && others.length ? el('li', { className: 'section', textContent: 'Otros sitios' }) : null,
+      ...others.map(p => renderPassword(p, false)),
+    ].filter(Boolean));
+    empty.hidden = state.passwords.length > 0;
   } else {
     $('panel-title').textContent = 'Descargas';
     $('panel-clear').hidden = !state.downloads.some(d => !['progressing', 'paused'].includes(d.state));
@@ -106,6 +135,25 @@ function renderPanel() {
     list.replaceChildren(...state.downloads.map(renderDownload));
     empty.hidden = state.downloads.length > 0;
   }
+}
+
+function renderPassword(p, current) {
+  const action = (label, fn) => {
+    const btn = el('button', { className: 'text', textContent: label });
+    btn.onclick = fn;
+    return btn;
+  };
+  return el('li', { className: 'item', title: p.origin },
+    el('div', { className: 'info' },
+      el('div', { className: 'name', textContent: p.username || '(sin usuario)' }),
+      el('div', { className: 'sub', textContent: p.origin }),
+      el('div', { className: 'actions' },
+        current ? action('Rellenar', () => browser.fillPassword(p.id)) : action('Abrir', () => browser.navigate(p.origin)),
+        action('Copiar contraseña', () => browser.copyPassword(p.id)),
+        action('Eliminar', () => { if (confirm(`¿Eliminar la contraseña de ${p.username || p.origin}?`)) browser.removePassword(p.id); }),
+      ),
+    ),
+  );
 }
 
 function renderDownload(d) {
@@ -157,6 +205,10 @@ $('new-tab').onclick = () => browser.newTab();
 $('star').onclick = () => browser.toggleBookmark();
 $('bookmarks-btn').onclick = () => openPanel('bookmarks');
 $('downloads-btn').onclick = () => openPanel('downloads');
+$('passwords-btn').onclick = () => openPanel('passwords');
+$('pw-save').onclick = () => browser.passwordPrompt({ tabId: state.activeId, action: 'save' });
+$('pw-never').onclick = () => browser.passwordPrompt({ tabId: state.activeId, action: 'never' });
+$('pw-dismiss').onclick = () => browser.passwordPrompt({ tabId: state.activeId, action: 'dismiss' });
 $('panel-close').onclick = () => openPanel(state.panel);
 $('panel-clear').onclick = () => browser.clearDownloads();
 
@@ -186,8 +238,57 @@ browser.on('tabs', ({ tabs, activeId, bookmarks }) => {
   if (switched && document.activeElement !== address) editingAddress = false;
   renderTabs();
   renderNavbar();
-  if (state.panel === 'bookmarks') renderPanel();
+  if (state.panel === 'bookmarks' || state.panel === 'passwords') renderPanel();
 });
+
+browser.on('passwords', (passwords) => {
+  state.passwords = passwords;
+  if (state.panel === 'passwords') renderPanel();
+});
+
+// ---------- Inicio de sesión HTTP (ventanita de usuario/contraseña del router) ----------
+const authQueue = [];
+
+function showNextAuth() {
+  const request = authQueue[0];
+  $('modal').hidden = !request;
+  browser.setModal(!!request);
+  if (!request) return;
+  $('auth-origin').textContent = request.isProxy
+    ? `El proxy ${request.origin} requiere usuario y contraseña`
+    : `${request.origin}${request.realm ? ` — «${request.realm}»` : ''}`;
+  $('auth-error').hidden = !request.failed;
+  $('auth-user').value = request.username;
+  $('auth-pass').value = '';
+  $('auth-remember').checked = true;
+  $('auth-remember').parentElement.hidden = request.isProxy;
+  (request.username ? $('auth-pass') : $('auth-user')).focus();
+}
+
+function answerAuth(response) {
+  const request = authQueue.shift();
+  if (request) browser.authResponse({ id: request.id, ...response });
+  showNextAuth();
+}
+
+$('auth-form').onsubmit = (e) => {
+  e.preventDefault();
+  answerAuth({ username: $('auth-user').value, password: $('auth-pass').value, remember: $('auth-remember').checked });
+};
+$('auth-cancel').onclick = () => answerAuth({});
+$('auth-form').onkeydown = (e) => { if (e.key === 'Escape') answerAuth({}); };
+
+browser.on('auth-request', (request) => {
+  authQueue.push(request);
+  if (authQueue.length === 1) showNextAuth();
+});
+
+// El alto de la parte superior cambia al mostrar el aviso de contraseña
+new ResizeObserver(() => {
+  const h = $('chrome').getBoundingClientRect().height;
+  document.documentElement.style.setProperty('--chrome-h', `${h}px`);
+  browser.setChromeHeight(h);
+}).observe($('chrome'));
 
 browser.on('downloads', (downloads) => {
   state.downloads = downloads;

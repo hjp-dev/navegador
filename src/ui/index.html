@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="chrome">
   <div id="tabbar">
     <div id="tabs"></div>
     <button id="new-tab" class="icon" title="Nueva pestaña (Ctrl+T)">＋</button>
@@ -21,7 +22,16 @@
       <button id="star" type="button" class="icon" title="Añadir a favoritos (Ctrl+D)">☆</button>
     </form>
     <button id="bookmarks-btn" class="icon" title="Favoritos (Ctrl+Shift+O)">★</button>
+    <button id="passwords-btn" class="icon" title="Contraseñas (Ctrl+Shift+P)">🔑<span id="pw-badge" hidden></span></button>
     <button id="downloads-btn" class="icon" title="Descargas (Ctrl+J)">⤓<span id="dl-badge" hidden></span></button>
+  </div>
+
+  <div id="infobar" hidden>
+    <span id="infobar-text"></span>
+    <button id="pw-save" class="primary">Guardar</button>
+    <button id="pw-never" class="text">Nunca para este sitio</button>
+    <button id="pw-dismiss" class="icon" title="Cerrar">✕</button>
+  </div>
   </div>
 
   <aside id="panel" hidden>
@@ -33,6 +43,21 @@
     <ul id="panel-list"></ul>
     <p id="panel-empty" hidden></p>
   </aside>
+
+  <div id="modal" hidden>
+    <form id="auth-form">
+      <h2>Iniciar sesión</h2>
+      <p id="auth-origin"></p>
+      <p id="auth-error" hidden>Usuario o contraseña incorrectos. Inténtalo de nuevo.</p>
+      <label>Usuario <input id="auth-user" type="text" spellcheck="false" autocomplete="off"></label>
+      <label>Contraseña <input id="auth-pass" type="password"></label>
+      <label class="check"><input id="auth-remember" type="checkbox" checked> Recordar usuario y contraseña</label>
+      <div class="buttons">
+        <button id="auth-cancel" type="button" class="text">Cancelar</button>
+        <button type="submit" class="primary">Iniciar sesión</button>
+      </div>
+    </form>
+  </div>
 
   <script src="renderer.js"></script>
 </body>

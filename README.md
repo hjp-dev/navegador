@@ -8,6 +8,21 @@ Solo tiene lo indispensable:
 - **Favoritos**: la estrella ☆ de la barra añade o quita la página actual; el botón ★ abre la lista. Se guardan en `favoritos.json` dentro de la carpeta de datos de la app.
 - **Descargas**: se guardan en tu carpeta de Descargas; el panel ⤓ muestra el progreso y permite pausar, reanudar, cancelar, abrir el archivo o mostrarlo en la carpeta.
 
+## Pensado para redes internas (routers, ONUs, OLTs)
+
+- **Sin avisos de "sitio no seguro"**: las páginas `http://` de los equipos se abren sin advertencias.
+- **Direcciones directas**: al escribir `192.168.1.1`, `10.0.0.1:8080`, `router.lan`, etc. se abre
+  `http://…` directamente, en vez de buscar en Google o forzar https.
+- **Guardar usuario y contraseña**:
+  - Al iniciar sesión en un formulario aparece la barra *¿Guardar la contraseña…?*.
+    La próxima vez se rellena sola.
+  - Funciona también con la ventanita de usuario/contraseña del propio equipo (autenticación HTTP):
+    marca *Recordar usuario y contraseña* y la próxima vez entra sin preguntar.
+  - Varias cuentas para la misma IP (por ejemplo, ONUs distintas en `192.168.1.1`): abre el panel 🔑
+    (Ctrl+Shift+P) y pulsa **Rellenar** en la que quieras. Desde ahí también se puede copiar o eliminar.
+  - Las contraseñas se guardan en `contrasenas.json`, cifradas con el sistema (Windows: DPAPI;
+    Ubuntu: llavero de GNOME/KDE). Si el sistema no tiene llavero disponible se guardan sin cifrar.
+
 ## Uso
 
 Necesitas [Node.js](https://nodejs.org/) 18 o superior.
@@ -49,6 +64,7 @@ npm run dist   # genera un instalador en dist/ (AppImage, .exe o .dmg según tu 
 | Añadir/quitar favorito | Ctrl+D |
 | Ver favoritos | Ctrl+Shift+O |
 | Ver descargas | Ctrl+J |
+| Contraseñas guardadas | Ctrl+Shift+P |
 
 (En macOS usa Cmd en lugar de Ctrl.)
 
@@ -56,7 +72,9 @@ npm run dist   # genera un instalador en dist/ (AppImage, .exe o .dmg según tu 
 
 ```
 src/
-  main.js        Proceso principal: ventana, pestañas, favoritos y descargas
-  preload.js     Puente seguro entre la interfaz y el proceso principal
+  main.js          Proceso principal: ventana, pestañas, favoritos, descargas e inicio de sesión
+  passwords.js     Almacén cifrado de contraseñas
+  preload.js       Puente seguro entre la interfaz y el proceso principal
+  page-preload.js  Se ejecuta en las páginas: detecta y rellena formularios de inicio de sesión
   ui/            Interfaz (barra de pestañas, navegación y panel lateral)
 ```
