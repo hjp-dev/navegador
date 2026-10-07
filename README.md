@@ -43,10 +43,14 @@ El botón **Columnas** permite ocultar las que no quieras ver (se recuerda tu el
 
 La **señal y el CCQ** no vienen en el escaneo (el protocolo de descubrimiento no los incluye):
 con el botón **Obtener señal/CCQ**, el navegador lee `status.cgi` de cada equipo y completa esas
-columnas. Para autenticarse **reutiliza la sesión que ya iniciaste en el navegador** (si abriste
-la antena y entraste, no vuelve a pedir contraseña, aunque no sea la de fábrica); si no hay sesión,
-prueba con las credenciales guardadas/predefinidas. La columna **Estado consulta** muestra si la
-lectura fue correcta o el error, para diagnosticar equipo por equipo.
+columnas. La consulta se hace **sola al terminar el escaneo** (login automático para toda la red): entra a
+cada equipo probando todas las credenciales conocidas. El orden es: primero reutiliza la sesión que
+ya tengas abierta en el navegador; si no, prueba las credenciales **predefinidas** y guardadas.
+La columna **Estado consulta** muestra si la lectura fue correcta (y con qué usuario) o el error.
+
+Para que funcione en toda la red sin abrir cada antena, carga una vez tu credencial común en el
+panel 🔑 → **Predefinidas**, dejando el campo de IPs **vacío** (= cualquier equipo de la red interna).
+Puedes cargar varias (p. ej. la vieja y la nueva contraseña); se prueban todas.
 
 Es muy útil en campo: encuentra la antena aunque tu PC esté en otra subred (por ejemplo, tu PC
 en `192.168.0.x` y la antena en `192.168.1.20`), así sabes qué IP configurar. Solo funciona en la

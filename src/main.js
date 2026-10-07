@@ -497,21 +497,34 @@ ui.on('scan-devices', async () => {
   scanning = false;
   send('scan-state', { scanning: false });
   send('devices', devices);
+  // Login automático para toda la red: al terminar el escaneo se consulta el estado solo
+  if (devices.length) fetchAllStatus();
 });
 
-// Entra a cada equipo (con las credenciales guardadas/predefinidas) y trae señal, CCQ, etc.
+// Todas las credenciales conocidas para un equipo (guardadas http/https + predefinidas), sin repetir.
+function credsForDevice(ip) {
+  const all = [...credentialsFor(`https://${ip}`), ...credentialsFor(`http://${ip}`)];
+  const seen = new Set();
+  const list = [];
+  for (const c of all) {
+    const key = `${c.username}\n${c.password}`;
+    if (!seen.has(key)) { seen.add(key); list.push({ username: c.username, password: c.password }); }
+  }
+  if (!list.length) list.push({ username: 'ubnt', password: 'ubnt' });
+  return list;
+}
+
+// Entra a cada equipo (probando todas las credenciales conocidas) y trae señal, CCQ, etc.
 let fetchingStatus = false;
 
-ui.on('fetch-device-status', async () => {
+async function fetchAllStatus() {
   if (fetchingStatus || !lastDevices.length) return;
   fetchingStatus = true;
   send('status-state', { fetching: true });
   await Promise.all(lastDevices.map(async (d) => {
-    const ip = d.ip;
-    const creds = credentialsFor(`https://${ip}`)[0] || credentialsFor(`http://${ip}`)[0] || { username: 'ubnt', password: 'ubnt' };
     let result;
     try {
-      result = await status.fetchStatus(ip, creds, isPrivateHost);
+      result = await status.fetchStatus(d.ip, credsForDevice(d.ip), isPrivateHost);
     } catch (e) {
       result = { ok: false, error: String(e) };
     }
@@ -519,7 +532,9 @@ ui.on('fetch-device-status', async () => {
   }));
   fetchingStatus = false;
   send('status-state', { fetching: false });
-});
+}
+
+ui.on('fetch-device-status', () => fetchAllStatus());
 
 // ---------- Certificados de equipos de la red interna ----------
 // Routers, ONUs y antenas (p. ej. LiteBeam 5AC Gen2) sirven su panel por https con un

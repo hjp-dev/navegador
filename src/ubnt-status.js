@@ -88,32 +88,45 @@ function parseStatus(bodyText, scheme) {
   };
 }
 
-async function fetchStatus(ip, creds, isPrivateHost) {
+// credsOrList: una credencial { username, password } o una lista (se prueban en orden).
+async function fetchStatus(ip, credsOrList, isPrivateHost) {
   const ses = getSession(isPrivateHost);
+  const creds = (Array.isArray(credsOrList) ? credsOrList : [credsOrList]).filter(c => c && c.username != null);
   let lastError = 'sin respuesta';
   for (const scheme of ['http', 'https']) {
     const base = `${scheme}://${ip}`;
     try {
-      // 1) Reutilizar el login que ya hizo el usuario en el navegador
+      // 1) Reutilizar el login que ya hizo el usuario en el navegador, si lo hay
       await reuseLoginCookies(ses, base);
       try {
         const res = await httpRequest(ses, 'GET', `${base}/status.cgi`);
-        if (res.status === 200) return parseStatus(res.body, scheme);
+        if (res.status === 200) {
+          const parsed = tryParse(res.body, scheme);
+          if (parsed) return parsed;
+        }
       } catch (e) { lastError = `status.cgi: ${e.message || e}`; }
 
-      // 2) Si no había sesión válida, intentar iniciar sesión con las credenciales
-      if (creds && creds.username != null) {
-        await httpRequest(ses, 'GET', `${base}/login.cgi`).catch(() => {});
-        await httpRequest(ses, 'POST', `${base}/login.cgi`, form({ username: creds.username, password: creds.password, uri: '/' }));
-        const res2 = await httpRequest(ses, 'GET', `${base}/status.cgi`);
-        if (res2.status === 200) return parseStatus(res2.body, scheme);
-        lastError = `status.cgi HTTP ${res2.status}`;
+      // 2) Si no había sesión válida, probar cada credencial hasta que una entre
+      for (const cred of creds) {
+        try {
+          await httpRequest(ses, 'GET', `${base}/login.cgi`).catch(() => {});
+          await httpRequest(ses, 'POST', `${base}/login.cgi`, form({ username: cred.username, password: cred.password, uri: '/' }));
+          const res2 = await httpRequest(ses, 'GET', `${base}/status.cgi`);
+          const parsed = tryParse(res2.body, scheme);
+          if (parsed) { parsed.user = cred.username; return parsed; }
+          lastError = `login falló (${cred.username})`;
+        } catch (e) { lastError = String(e.message || e); }
       }
     } catch (e) {
       lastError = String(e && e.message ? e.message : e);
     }
   }
   return { ok: false, error: lastError };
+}
+
+// Devuelve el estado si el cuerpo es el JSON de status.cgi; null si es otra cosa (p. ej. login HTML).
+function tryParse(body, scheme) {
+  try { return parseStatus(body, scheme); } catch { return null; }
 }
 
 module.exports = { fetchStatus };
