@@ -199,6 +199,12 @@ function renderPresetForm() {
 }
 
 // ---------- Vista completa de antenas (tabla con filtro de columnas) ----------
+function fmtKbps(v) {
+  if (v == null) return '—';
+  const n = Number(v);
+  if (!isFinite(n)) return '—';
+  return n >= 1000 ? `${(n / 1000).toFixed(1)} Mbps` : `${Math.round(n)} kbps`;
+}
 const deviceKey = (d) => d.mac || d.ip;
 const mgmtIp = (d) => ((d.ips && d.ips.length) ? d.ips[0] : d.ip);
 const wanIps = (d) => ((d.ips && d.ips.length) ? d.ips.slice(1) : []).join(', ');
@@ -214,6 +220,7 @@ const DEVICE_COLUMNS = [
   { key: 'mode',     label: 'Modo',     get: (d) => (d.status && d.status.mode) || '' },
   { key: 'signal',   label: 'Señal',    get: (d) => d.status && d.status.signal != null ? `${d.status.signal} dBm` : '' },
   { key: 'ccq',      label: 'CCQ',      get: (d) => d.status && d.status.ccq != null ? `${d.status.ccq} %` : '' },
+  { key: 'throughput', label: 'Throughput ↓/↑', get: (d) => d.status && (d.status.rxthroughput != null || d.status.txthroughput != null) ? `${fmtKbps(d.status.rxthroughput)} / ${fmtKbps(d.status.txthroughput)}` : '' },
   { key: 'firmware', label: 'Firmware', get: (d) => (d.status && d.status.fwversion) || d.firmware || '' },
   { key: 'estado',   label: 'Estado consulta', get: (d) => !d.status ? '' : (d.status.ok ? `OK (${d.status.scheme})` : `Error: ${d.status.error}`) },
 ];

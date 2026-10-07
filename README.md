@@ -48,6 +48,10 @@ cada equipo probando todas las credenciales conocidas. El orden es: primero reut
 ya tengas abierta en el navegador; si no, prueba las credenciales **predefinidas** y guardadas.
 La columna **Estado consulta** muestra si la lectura fue correcta (y con qué usuario) o el error.
 
+Compatibilidad: en **airOS 6** la señal sale de `wireless.signal` y trae **CCQ**. En **airOS 8**
+la señal viene por enlace (`wireless.sta[]`) y **ya no existe CCQ** (Ubiquiti lo quitó), por eso esa
+columna queda vacía en v8; a cambio se muestra el **Throughput** cuando el equipo lo reporta.
+
 Para que funcione en toda la red sin abrir cada antena, carga una vez tu credencial común en el
 panel 🔑 → **Predefinidas**, dejando el campo de IPs **vacío** (= cualquier equipo de la red interna).
 Puedes cargar varias (p. ej. la vieja y la nueva contraseña); se prueban todas.

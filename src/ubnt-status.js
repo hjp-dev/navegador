@@ -69,18 +69,38 @@ function parseStatus(bodyText, scheme) {
   const json = JSON.parse(bodyText); // si es la página de login (HTML), lanza y se maneja afuera
   const w = json.wireless || {};
   const h = json.host || {};
+  const stations = Array.isArray(w.sta) ? w.sta : [];
+
+  // Señal:
+  //  - airOS 6: w.signal
+  //  - airOS 8: no está en w.signal; viene por enlace en w.sta[].signal
+  //             (CPE en modo estación = w.sta[0]; AP = se toma la mejor de sus clientes)
+  let signal = (w.signal != null) ? w.signal : null;
+  if (signal == null && stations.length) {
+    signal = stations.reduce((best, s) => (s && s.signal != null && (best == null || s.signal > best) ? s.signal : best), null);
+  }
+
+  // CCQ existe en airOS 6 (w.ccq). airOS 8 no lo reporta -> queda null.
+  const ccq = normCcq(w.ccq);
+
+  // Throughput (airOS 8 lo trae en w.throughput, en kbps)
+  const tp = w.throughput || {};
+
   return {
     ok: true,
     scheme,
-    signal: (w.signal ?? null),       // dBm
-    ccq: normCcq(w.ccq),              // %
+    signal,                            // dBm
+    ccq,                               // % (solo airOS 6)
     essid: w.essid || '',
     mode: w.mode || '',
     rxrate: w.rxrate ?? null,
     txrate: w.txrate ?? null,
+    txthroughput: tp.tx ?? null,       // kbps (airOS 8)
+    rxthroughput: tp.rx ?? null,       // kbps (airOS 8)
     distance: w.distance ?? null,
     noise: (w.noisef ?? null),
     txpower: (w.txpower ?? null),
+    peers: stations.length || (w.count ?? null),
     uptime: h.uptime ?? null,
     fwversion: h.fwversion || '',
     hostname: h.hostname || '',
