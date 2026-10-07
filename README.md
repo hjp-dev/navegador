@@ -8,6 +8,18 @@ Solo tiene lo indispensable:
 - **Favoritos**: la estrella ☆ de la barra añade o quita la página actual; el botón ★ abre la lista. Se guardan en `favoritos.json` dentro de la carpeta de datos de la app.
 - **Descargas**: se guardan en tu carpeta de Descargas; el panel ⤓ muestra el progreso y permite pausar, reanudar, cancelar, abrir el archivo o mostrarlo en la carpeta.
 
+## Página de inicio y pantalla
+
+La página de inicio es propia del navegador (no Google): tiene un buscador (que usa Google) con los
+botones «Buscar con Google» y «Voy a tener suerte», y accesos directos a Antenas, Favoritos,
+Descargas y Contraseñas. Si escribes una IP o dirección en ese buscador, la abre directamente.
+
+- **Pantalla completa:** F11.
+- **Ocultar/mostrar la barra de direcciones:** Ctrl+Shift+B.
+
+Al abrir un equipo desde la vista **Antenas**, se abre en una pestaña nueva y la vista Antenas
+queda abierta en la pestaña anterior (vuelves a ella desde la barra de pestañas).
+
 ## Pensado para redes internas (routers, ONUs, OLTs)
 
 - **Sin avisos de "sitio no seguro"**: las páginas `http://` de los equipos se abren sin advertencias.

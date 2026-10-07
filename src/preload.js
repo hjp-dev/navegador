@@ -28,7 +28,7 @@ contextBridge.exposeInMainWorld('browser', {
   fetchDeviceStatus: send('fetch-device-status'),
   openDevice: send('open-device'),
   on: (channel, callback) => {
-    const allowed = ['tabs', 'downloads', 'passwords', 'show-panel', 'focus-address', 'auth-request', 'devices', 'scan-state', 'device-status', 'status-state'];
+    const allowed = ['tabs', 'downloads', 'passwords', 'show-panel', 'focus-address', 'auth-request', 'devices', 'scan-state', 'device-status', 'status-state', 'toggle-navbar'];
     if (allowed.includes(channel)) ipcRenderer.on(channel, (_e, data) => callback(data));
   },
 });

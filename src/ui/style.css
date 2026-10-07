@@ -393,3 +393,5 @@ progress {
 
 .dv-link { color: var(--accent); text-decoration: none; cursor: pointer; }
 .dv-link:hover { text-decoration: underline; }
+
+#modal { z-index: 20; }

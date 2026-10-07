@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 
-const state = { tabs: [], activeId: null, bookmarks: [], downloads: [], passwords: { entries: [], presets: [] }, devices: [], scanning: false, scanned: false, fetchingStatus: false, panel: null };
+const state = { tabs: [], activeId: null, bookmarks: [], downloads: [], passwords: { entries: [], presets: [] }, devices: [], scanning: false, scanned: false, fetchingStatus: false, devicesOwner: null, panel: null };
 
 const address = $('address');
 let editingAddress = false;
@@ -245,20 +245,32 @@ function loadColVis() {
 let colVis = loadColVis();
 function saveColVis() { try { localStorage.setItem('dv-cols', JSON.stringify(colVis)); } catch {} }
 
+// La vista Antenas "pertenece" a la pestaña donde se abrió: queda abierta en esa pestaña y
+// se oculta al cambiar a otra (por ejemplo, al abrir un equipo en pestaña nueva).
 function openDevicesView() {
+  state.devicesOwner = state.activeId;
   $('devices-view').hidden = false;
   browser.setModal(true); // oculta la página para mostrar la tabla a pantalla completa
   renderDevicesView();
   if (!state.scanning && !state.scanned) browser.scanDevices();
 }
 function closeDevicesView() {
+  state.devicesOwner = null;
   $('devices-view').hidden = true;
   browser.setModal(false);
 }
+// Muestra u oculta la vista según la pestaña activa (la "dueña" la mantiene abierta).
+function syncDevicesView() {
+  if (state.devicesOwner == null) return;
+  if (!state.tabs.some(t => t.id === state.devicesOwner)) { closeDevicesView(); return; } // su pestaña se cerró
+  const show = state.activeId === state.devicesOwner;
+  $('devices-view').hidden = !show;
+  browser.setModal(show);
+  if (show) renderDevicesView();
+}
 
-// Abre el equipo en una pestaña nueva (cerrando la vista Antenas) e intenta autologin.
+// Abre el equipo en una pestaña nueva (con autologin). La vista Antenas queda en la pestaña actual.
 function openDeviceInTab(ipOrUrl) {
-  closeDevicesView();
   browser.openDevice({ url: ipOrUrl, autologin: true });
 }
 
@@ -377,7 +389,10 @@ $('star').onclick = () => browser.toggleBookmark();
 $('bookmarks-btn').onclick = () => openPanel('bookmarks');
 $('downloads-btn').onclick = () => openPanel('downloads');
 $('passwords-btn').onclick = () => openPanel('passwords');
-$('devices-btn').onclick = () => openDevicesView();
+$('devices-btn').onclick = () => {
+  if (state.devicesOwner === state.activeId && !$('devices-view').hidden) closeDevicesView();
+  else openDevicesView();
+};
 $('dv-close').onclick = () => closeDevicesView();
 $('dv-scan').onclick = () => browser.scanDevices();
 $('dv-status').onclick = () => browser.fetchDeviceStatus();
@@ -414,6 +429,18 @@ browser.on('tabs', ({ tabs, activeId, bookmarks }) => {
   renderTabs();
   renderNavbar();
   if (state.panel === 'bookmarks' || state.panel === 'passwords') renderPanel();
+  syncDevicesView();
+});
+
+// Ocultar/mostrar la barra de direcciones (se recuerda la preferencia)
+let navbarHidden = false;
+try { navbarHidden = localStorage.getItem('navbar-hidden') === '1'; } catch {}
+function applyNavbar() { $('navbar').style.display = navbarHidden ? 'none' : ''; }
+applyNavbar();
+browser.on('toggle-navbar', () => {
+  navbarHidden = !navbarHidden;
+  try { localStorage.setItem('navbar-hidden', navbarHidden ? '1' : '0'); } catch {}
+  applyNavbar();
 });
 
 browser.on('passwords', (passwords) => {

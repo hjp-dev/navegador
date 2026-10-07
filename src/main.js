@@ -1,12 +1,15 @@
 const { app, BrowserWindow, WebContentsView, ipcMain, Menu, shell, session, clipboard } = require('electron');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const fs = require('fs');
 const passwords = require('./passwords');
 const discovery = require('./ubnt-discovery');
 const status = require('./ubnt-status');
 
-const HOME_URL = 'https://www.google.com';
+// Página de inicio propia del navegador (no Google)
+const HOME_URL = pathToFileURL(path.join(__dirname, 'ui', 'home.html')).href;
 const SEARCH_URL = 'https://www.google.com/search?q=';
+const isHomeUrl = (url) => !!url && (url === HOME_URL || url.startsWith(HOME_URL.split('#')[0]));
 const PANEL_WIDTH = 320;   // panel lateral de favoritos/descargas/contraseñas
 
 let win;
@@ -86,10 +89,11 @@ function activeTab() {
 
 function tabInfo(tab) {
   const wc = tab.view.webContents;
+  const url = wc.getURL();
   return {
     id: tab.id,
     title: wc.getTitle() || 'Nueva pestaña',
-    url: wc.getURL(),
+    url: isHomeUrl(url) ? '' : url, // en la página de inicio, barra de direcciones vacía
     loading: wc.isLoading(),
     canGoBack: wc.navigationHistory.canGoBack(),
     canGoForward: wc.navigationHistory.canGoForward(),
@@ -165,10 +169,26 @@ function createTab(url = HOME_URL, activate = true, opts = {}) {
     return { action: 'deny' };
   });
 
+  // Botones de la página de inicio: enlaces a navegador.home/* que abren paneles del navegador
+  wc.on('will-navigate', (e, target) => {
+    try {
+      const u = new URL(target);
+      if (u.hostname === 'navegador.home') {
+        e.preventDefault();
+        handleHomeCommand(u.pathname.replace(/^\//, ''));
+      }
+    } catch {}
+  });
+
   wc.loadURL(url);
   if (activate) activateTab(tab.id);
   else sendTabs();
   return tab;
+}
+
+function handleHomeCommand(cmd) {
+  const panel = { antenas: 'devices', favoritos: 'bookmarks', descargas: 'downloads', contrasenas: 'passwords' }[cmd];
+  if (panel) send('show-panel', panel);
 }
 
 function activateTab(id) {
@@ -262,6 +282,9 @@ function buildMenu() {
         { label: 'Descargas', accelerator: 'CmdOrCtrl+J', click: () => send('show-panel', 'downloads') },
         { label: 'Contraseñas', accelerator: 'CmdOrCtrl+Shift+P', click: () => send('show-panel', 'passwords') },
         { label: 'Antenas Ubiquiti', accelerator: 'CmdOrCtrl+Shift+U', click: () => send('show-panel', 'devices') },
+        { type: 'separator' },
+        { label: 'Ocultar/mostrar barra de direcciones', accelerator: 'CmdOrCtrl+Shift+B', click: () => send('toggle-navbar') },
+        { role: 'togglefullscreen' }, // F11 en Windows/Linux
         { type: 'separator' },
         { label: 'Herramientas de desarrollo', accelerator: 'F12', click: () => wc()?.toggleDevTools() },
         { role: 'quit', label: 'Salir' },

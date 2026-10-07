@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Nueva pestaña</title>
+  <style>
+    :root {
+      --bg: #ffffff; --text: #202124; --muted: #5f6368; --border: #dadce0;
+      --input: #ffffff; --accent: #1a73e8; --tile: #f1f3f4; --tile-hover: #e8eaed;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #202124; --text: #e8eaed; --muted: #9aa0a6; --border: #5f6368;
+        --input: #303134; --accent: #8ab4f8; --tile: #303134; --tile-hover: #3c4043; }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font: 15px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 24px; gap: 28px;
+    }
+    .logo { font-size: 64px; font-weight: 700; letter-spacing: -2px; display: flex; align-items: center; gap: 10px; }
+    .logo .inf { color: var(--accent); }
+    .logo .name { color: var(--text); }
+    form { width: 100%; max-width: 560px; }
+    .searchbox {
+      display: flex; align-items: center; gap: 10px;
+      height: 48px; padding: 0 18px;
+      border: 1px solid var(--border); border-radius: 24px; background: var(--input);
+      box-shadow: 0 1px 6px rgba(0,0,0,.08);
+    }
+    .searchbox:focus-within { box-shadow: 0 1px 10px rgba(0,0,0,.18); border-color: transparent; }
+    .searchbox svg { width: 20px; height: 20px; fill: var(--muted); flex: none; }
+    #q { flex: 1; border: none; outline: none; background: transparent; color: var(--text); font-size: 16px; }
+    .buttons { display: flex; gap: 12px; justify-content: center; margin-top: 22px; flex-wrap: wrap; }
+    .buttons button {
+      border: 1px solid transparent; border-radius: 4px; padding: 10px 16px;
+      background: var(--tile); color: var(--text); font: inherit; cursor: pointer;
+    }
+    .buttons button:hover { border-color: var(--border); background: var(--tile-hover); }
+    .tiles { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; max-width: 620px; }
+    .tile {
+      width: 112px; height: 92px; border-radius: 10px; background: var(--tile);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      text-decoration: none; color: var(--text); cursor: pointer;
+    }
+    .tile:hover { background: var(--tile-hover); }
+    .tile .ic { font-size: 28px; }
+    .tile .lb { font-size: 13px; }
+    .hint { color: var(--muted); font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="logo"><span class="inf">∞</span><span class="name">Navegador</span></div>
+
+  <form id="search" action="https://www.google.com/search" method="GET">
+    <div class="searchbox">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+      <input id="q" name="q" type="text" autocomplete="off" autofocus placeholder="Buscar en Google o escribir una dirección">
+    </div>
+    <div class="buttons">
+      <button type="submit">Buscar con Google</button>
+      <button type="submit" name="btnI" value="Voy%20a%20tener%20suerte">Voy a tener suerte</button>
+    </div>
+  </form>
+
+  <div class="tiles">
+    <a class="tile" href="https://navegador.home/antenas"><span class="ic">📡</span><span class="lb">Antenas</span></a>
+    <a class="tile" href="https://navegador.home/favoritos"><span class="ic">★</span><span class="lb">Favoritos</span></a>
+    <a class="tile" href="https://navegador.home/descargas"><span class="ic">⤓</span><span class="lb">Descargas</span></a>
+    <a class="tile" href="https://navegador.home/contrasenas"><span class="ic">🔑</span><span class="lb">Contraseñas</span></a>
+  </div>
+
+  <p class="hint">F11: pantalla completa · Ctrl+Shift+B: ocultar/mostrar la barra de direcciones · Ctrl+Shift+U: antenas</p>
+
+  <script>
+    // Si lo escrito parece una IP/dirección, abrirla en vez de buscar en Google
+    document.getElementById('search').addEventListener('submit', function (e) {
+      const v = document.getElementById('q').value.trim();
+      const esIpODominio = /^(https?:\/\/|\d{1,3}(\.\d{1,3}){3}|[a-z0-9-]+(\.[a-z0-9-]+)+)(:\d+)?(\/|$)/i.test(v);
+      if (v && esIpODominio && !/\s/.test(v)) {
+        e.preventDefault();
+        location.href = /^https?:\/\//i.test(v) ? v : 'http://' + v;
+      }
+    });
+  </script>
+</body>
+</html>
