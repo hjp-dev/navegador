@@ -478,6 +478,23 @@ ui.on('preset-add', (_e, preset) => {
   sendPasswords();
 });
 
+// ---------- Certificados de equipos de la red interna ----------
+// Routers, ONUs y antenas (p. ej. LiteBeam 5AC Gen2) sirven su panel por https con un
+// certificado propio (autofirmado), que Chromium normalmente rechaza. Aquí se aceptan
+// SOLO cuando el equipo está en una dirección de red interna (192.168.x, 10.x, 172.16-31.x,
+// 100.64.x CGNAT, 169.254.x, localhost y nombres .local/.lan). En Internet NO se acepta
+// ningún certificado inválido: ahí se mantiene la verificación normal del navegador.
+app.on('certificate-error', (event, _webContents, url, _error, _certificate, callback) => {
+  let host = '';
+  try { host = new URL(url).hostname; } catch {}
+  if (host && isPrivateHost(host)) {
+    event.preventDefault(); // confiar en el certificado del equipo de la red interna
+    callback(true);
+  } else {
+    callback(false);        // Internet: se rechaza como en cualquier navegador
+  }
+});
+
 // ---------- Autenticación HTTP ----------
 // La ventanita de usuario/contraseña que usan muchos routers y ONUs
 const authRequests = new Map(); // id -> { callback, origin, isProxy }

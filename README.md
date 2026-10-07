@@ -11,6 +11,11 @@ Solo tiene lo indispensable:
 ## Pensado para redes internas (routers, ONUs, OLTs)
 
 - **Sin avisos de "sitio no seguro"**: las páginas `http://` de los equipos se abren sin advertencias.
+- **Certificados propios (https)**: los equipos que sirven su panel por `https://` con un
+  certificado autofirmado (p. ej. LiteBeam 5AC Gen2) se abren sin el error de "no seguro",
+  pero solo si están en una dirección de red interna (192.168.x, 10.x, 172.16-31.x, 100.64.x
+  CGNAT, 169.254.x, localhost y nombres .local/.lan). En Internet se mantiene la verificación
+  normal del navegador: ahí un certificado inválido sí se bloquea.
 - **Direcciones directas**: al escribir `192.168.1.1`, `10.0.0.1:8080`, `router.lan`, etc. se abre
   `http://…` directamente, en vez de buscar en Google o forzar https.
 - **Guardar usuario y contraseña**:
