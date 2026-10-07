@@ -23,6 +23,21 @@ Solo tiene lo indispensable:
   - Las contraseñas se guardan en `contrasenas.json`, cifradas con el sistema (Windows: DPAPI;
     Ubuntu: llavero de GNOME/KDE). Si el sistema no tiene llavero disponible se guardan sin cifrar.
 
+### Credenciales predefinidas para equipos (routers, ONUs, antenas)
+
+Además de las contraseñas que guardas al iniciar sesión, puedes definir credenciales fijas
+que se rellenan solas en los equipos de la red interna, sin tener que guardarlas uno por uno:
+
+- Abre el panel 🔑 (Ctrl+Shift+P) → sección **Predefinidas** → rellena nombre, usuario,
+  contraseña y, opcionalmente, las IPs donde aplica (vacío = cualquier equipo de la red interna;
+  admite comodines como `10.0.*`).
+- Al abrir la página de un equipo que coincida, el usuario y la contraseña se rellenan solos.
+  Si el equipo pide usuario/contraseña con la ventanita del sistema (autenticación HTTP),
+  entra directamente probando las credenciales predefinidas.
+- Viene con la credencial de fábrica de **Ubiquiti airOS** (`ubnt` / `ubnt`) para las IPs
+  `192.168.1.20` y `192.168.172.1` (LiteBeam M5, LiteBeam 5AC Gen2, etc.). Puedes editarla o
+  añadir la credencial propia de tu empresa para todas las antenas ya instaladas.
+
 ## Uso
 
 Necesitas [Node.js](https://nodejs.org/) 18 o superior.

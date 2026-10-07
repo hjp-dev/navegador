@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('browser', {
   fillPassword: send('pw-fill'),
   copyPassword: send('pw-copy'),
   removePassword: send('pw-remove'),
+  addPreset: send('preset-add'),
   authResponse: send('auth-response'),
   on: (channel, callback) => {
     const allowed = ['tabs', 'downloads', 'passwords', 'show-panel', 'focus-address', 'auth-request'];

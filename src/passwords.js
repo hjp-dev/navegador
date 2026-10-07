@@ -6,13 +6,27 @@ const fs = require('fs');
 
 const file = () => path.join(app.getPath('userData'), 'contrasenas.json');
 
-let data = { entries: [], never: [] }; // entries: { id, origin, username, password, enc, lastUsed }
+// entries: contraseñas guardadas por sitio { id, origin, username, password, enc, lastUsed }
+// presets: credenciales predefinidas para equipos de la red interna { id, label, username, password, enc, hosts }
+//          hosts: IPs/nombres separados por comas, admite * (p. ej. "10.0.*"); vacío = toda la red interna
+let data = { entries: [], never: [], presets: [] };
+
+const FACTORY_PRESETS = [
+  { label: 'Ubiquiti airOS (fábrica)', username: 'ubnt', password: 'ubnt', hosts: '192.168.1.20, 192.168.172.1' },
+];
+
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
 function load() {
+  let stored = {};
   try {
-    data = { entries: [], never: [], ...JSON.parse(fs.readFileSync(file(), 'utf8')) };
-  } catch {
-    data = { entries: [], never: [] };
+    stored = JSON.parse(fs.readFileSync(file(), 'utf8'));
+  } catch {}
+  data = { entries: [], never: [], ...stored };
+  if (!Array.isArray(data.presets)) {
+    // Primera vez: se cargan las credenciales de fábrica conocidas
+    data.presets = FACTORY_PRESETS.map(p => ({ id: newId(), label: p.label, username: p.username, hosts: p.hosts, ...encrypt(p.password) }));
+    persist();
   }
 }
 
@@ -66,7 +80,7 @@ function status(origin, username, password) {
 function save(origin, username, password) {
   let entry = data.entries.find(e => e.origin === origin && e.username === username);
   if (!entry) {
-    entry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), origin, username };
+    entry = { id: newId(), origin, username };
     data.entries.push(entry);
   }
   Object.assign(entry, encrypt(password), { lastUsed: Date.now() });
@@ -94,4 +108,39 @@ function setNever(origin) {
   persist();
 }
 
-module.exports = { load, list, forOrigin, get, status, save, touch, remove, isNever, setNever };
+// ---------- Credenciales predefinidas ----------
+function hostMatches(patterns, host, isPrivate) {
+  const list = String(patterns || '').split(/[\s,;]+/).filter(Boolean);
+  if (list.length === 0) return isPrivate; // sin IPs: cualquier equipo de la red interna
+  return list.some(p => new RegExp('^' + p.toLowerCase().replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$').test(host.toLowerCase()));
+}
+
+function presetsFor(host, isPrivate) {
+  return data.presets
+    .filter(p => hostMatches(p.hosts, host, isPrivate))
+    .map(p => ({ id: 'preset:' + p.id, username: p.username, password: decrypt(p), preset: true, label: p.label }));
+}
+
+function listPresets() {
+  return data.presets.map(({ id, label, username, hosts }) => ({ id: 'preset:' + id, label, username, hosts }));
+}
+
+function getPreset(id) {
+  const preset = data.presets.find(p => 'preset:' + p.id === id);
+  return preset && { username: preset.username, password: decrypt(preset) };
+}
+
+function savePreset({ label, username, password, hosts }) {
+  data.presets.push({ id: newId(), label: String(label || ''), username: String(username || ''), hosts: String(hosts || ''), ...encrypt(String(password || '')) });
+  persist();
+}
+
+function removePreset(id) {
+  data.presets = data.presets.filter(p => 'preset:' + p.id !== id);
+  persist();
+}
+
+module.exports = {
+  load, list, forOrigin, get, status, save, touch, remove, isNever, setNever,
+  presetsFor, listPresets, getPreset, savePreset, removePreset,
+};

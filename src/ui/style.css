@@ -313,3 +313,15 @@ progress {
   margin-top: 4px;
   accent-color: var(--accent);
 }
+
+.preset-form { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.preset-form input {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--input);
+  color: var(--text);
+  font: inherit;
+  user-select: text;
+}
+.preset-form button { align-self: flex-end; }

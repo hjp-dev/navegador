@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 
-const state = { tabs: [], activeId: null, bookmarks: [], downloads: [], passwords: [], panel: null };
+const state = { tabs: [], activeId: null, bookmarks: [], downloads: [], passwords: { entries: [], presets: [] }, panel: null };
 
 const address = $('address');
 let editingAddress = false;
@@ -115,19 +115,24 @@ function renderPanel() {
     }));
     empty.hidden = state.bookmarks.length > 0;
   } else if (state.panel === 'passwords') {
+    // No redibujar mientras se escribe en el formulario de predefinidas
+    if (document.activeElement?.closest?.('.preset-form') && $('panel-list').contains(document.activeElement)) return;
     $('panel-title').textContent = 'Contraseñas';
     $('panel-clear').hidden = true;
-    empty.textContent = 'No hay contraseñas guardadas. Al iniciar sesión en un sitio se te ofrecerá guardarla.';
+    const { entries, presets } = state.passwords;
     const here = originOf(activeTab()?.url);
-    const mine = state.passwords.filter(p => p.origin === here);
-    const others = state.passwords.filter(p => p.origin !== here);
+    const mine = entries.filter(p => p.origin === here);
+    const others = entries.filter(p => p.origin !== here);
     list.replaceChildren(...[
       mine.length ? el('li', { className: 'section', textContent: 'Este sitio' }) : null,
       ...mine.map(p => renderPassword(p, true)),
-      mine.length && others.length ? el('li', { className: 'section', textContent: 'Otros sitios' }) : null,
+      el('li', { className: 'section', textContent: 'Predefinidas (equipos de la red interna)' }),
+      ...presets.map(renderPreset),
+      renderPresetForm(),
+      others.length ? el('li', { className: 'section', textContent: 'Otros sitios' }) : null,
       ...others.map(p => renderPassword(p, false)),
     ].filter(Boolean));
-    empty.hidden = state.passwords.length > 0;
+    empty.hidden = true;
   } else {
     $('panel-title').textContent = 'Descargas';
     $('panel-clear').hidden = !state.downloads.some(d => !['progressing', 'paused'].includes(d.state));
@@ -154,6 +159,43 @@ function renderPassword(p, current) {
       ),
     ),
   );
+}
+
+function renderPreset(p) {
+  const action = (label, fn) => {
+    const btn = el('button', { className: 'text', textContent: label });
+    btn.onclick = fn;
+    return btn;
+  };
+  return el('li', { className: 'item', title: p.hosts || 'Toda la red interna' },
+    el('div', { className: 'info' },
+      el('div', { className: 'name', textContent: `${p.label || 'Predefinida'} — ${p.username || '(sin usuario)'}` }),
+      el('div', { className: 'sub', textContent: p.hosts ? `Para: ${p.hosts}` : 'Para: toda la red interna' }),
+      el('div', { className: 'actions' },
+        action('Rellenar', () => browser.fillPassword(p.id)),
+        action('Copiar contraseña', () => browser.copyPassword(p.id)),
+        action('Eliminar', () => { if (confirm(`¿Eliminar la credencial predefinida «${p.label || p.username}»?`)) browser.removePassword(p.id); }),
+      ),
+    ),
+  );
+}
+
+// Formulario para añadir una credencial predefinida (p. ej. la de la empresa para todas las antenas)
+function renderPresetForm() {
+  const input = (placeholder, type = 'text') => el('input', { type, placeholder, spellcheck: false, autocomplete: 'off' });
+  const label = input('Nombre (p. ej. Antenas empresa)');
+  const user = input('Usuario');
+  const pass = input('Contraseña', 'password');
+  const hosts = input('IPs (vacío = toda la red interna; admite 10.0.*)');
+  const add = el('button', { className: 'primary', type: 'submit', textContent: 'Añadir predefinida' });
+  const form = el('form', { className: 'preset-form' }, label, user, pass, hosts, add);
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    if (!pass.value) { pass.focus(); return; }
+    document.activeElement?.blur();
+    browser.addPreset({ label: label.value, username: user.value, password: pass.value, hosts: hosts.value });
+  };
+  return el('li', { className: 'item' }, form);
 }
 
 function renderDownload(d) {

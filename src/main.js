@@ -92,7 +92,7 @@ function tabInfo(tab) {
     canGoBack: wc.navigationHistory.canGoBack(),
     canGoForward: wc.navigationHistory.canGoForward(),
     favicon: tab.favicon || null,
-    savedLogins: originOf(wc.getURL()) ? passwords.forOrigin(originOf(wc.getURL())).length : 0,
+    savedLogins: originOf(wc.getURL()) ? credentialsFor(originOf(wc.getURL())).length : 0,
     pwPrompt: tab.pwPrompt ? { origin: tab.pwPrompt.origin, username: tab.pwPrompt.username, update: tab.pwPrompt.update } : null,
   };
 }
@@ -392,14 +392,23 @@ ui.on('clear-downloads', () => {
 
 // ---------- Contraseñas ----------
 function sendPasswords() {
-  send('passwords', passwords.list());
+  send('passwords', { entries: passwords.list(), presets: passwords.listPresets() });
   sendTabs();
+}
+
+// Guardadas para el sitio primero; después las predefinidas que correspondan a ese equipo
+function credentialsFor(origin) {
+  const saved = passwords.forOrigin(origin);
+  let host = '';
+  try { host = new URL(origin).hostname; } catch {}
+  const presets = host ? passwords.presetsFor(host, isPrivateHost(host)) : [];
+  return [...saved, ...presets.filter(p => !saved.some(s => s.username === p.username && s.password === p.password))];
 }
 
 // El origen se toma siempre del marco real que envía el mensaje, nunca de lo que diga la página
 ipcMain.handle('pw:get', (e) => {
   const origin = originOf(e.senderFrame?.url);
-  return origin ? passwords.forOrigin(origin) : [];
+  return origin ? credentialsFor(origin) : [];
 });
 
 ipcMain.on('pw:submitted', (e, credential) => {
@@ -407,6 +416,8 @@ ipcMain.on('pw:submitted', (e, credential) => {
   const origin = originOf(e.senderFrame?.url);
   if (!tab || !origin || typeof credential?.password !== 'string' || !credential.password) return;
   const username = String(credential.username || '');
+  // Si entró con una credencial predefinida no hace falta guardarla aparte
+  if (credentialsFor(origin).some(c => c.preset && c.username === username && c.password === credential.password)) return;
   const status = passwords.status(origin, username, credential.password);
   if (status === 'same') {
     passwords.touch(origin, username);
@@ -427,10 +438,23 @@ ui.on('pw-prompt', (_e, { tabId, action }) => {
   sendPasswords();
 });
 
+const isPresetId = (id) => String(id).startsWith('preset:');
+
 ui.on('pw-fill', (_e, id) => {
-  const credential = passwords.get(id);
   const wc = activeTab()?.view.webContents;
-  if (!credential || !wc) return;
+  if (!wc) return;
+  if (isPresetId(id)) {
+    // Predefinida: se rellena en el sitio que está abierto en la pestaña
+    const credential = passwords.getPreset(id);
+    const origin = originOf(wc.getURL());
+    if (!credential || !origin) return;
+    for (const frame of wc.mainFrame.framesInSubtree) {
+      if (originOf(frame.url) === origin) frame.send('pw:fill', credential);
+    }
+    return;
+  }
+  const credential = passwords.get(id);
+  if (!credential) return;
   for (const frame of wc.mainFrame.framesInSubtree) {
     if (originOf(frame.url) === credential.origin) frame.send('pw:fill', credential);
   }
@@ -438,35 +462,43 @@ ui.on('pw-fill', (_e, id) => {
 });
 
 ui.on('pw-copy', (_e, id) => {
-  const credential = passwords.get(id);
+  const credential = isPresetId(id) ? passwords.getPreset(id) : passwords.get(id);
   if (credential) clipboard.writeText(credential.password);
 });
 
 ui.on('pw-remove', (_e, id) => {
-  passwords.remove(id);
+  if (isPresetId(id)) passwords.removePreset(id);
+  else passwords.remove(id);
+  sendPasswords();
+});
+
+ui.on('preset-add', (_e, preset) => {
+  if (!preset || !String(preset.password || '')) return;
+  passwords.savePreset(preset);
   sendPasswords();
 });
 
 // ---------- Autenticación HTTP ----------
 // La ventanita de usuario/contraseña que usan muchos routers y ONUs
 const authRequests = new Map(); // id -> { callback, origin, isProxy }
-const authAttempts = new Set(); // `${wcId}|${origin}` ya probados con la contraseña guardada
+const authAttempts = new Map(); // `${wcId}|${origin}` -> cuántas credenciales conocidas ya se probaron
 let nextAuthId = 1;
 
 function clearAuthAttempts(wcId) {
-  for (const key of authAttempts) if (key.startsWith(wcId + '|')) authAttempts.delete(key);
+  for (const key of authAttempts.keys()) if (key.startsWith(wcId + '|')) authAttempts.delete(key);
 }
 
 app.on('login', (event, webContents, details, authInfo, callback) => {
   event.preventDefault();
   const origin = originOf(details.url) || `${authInfo.scheme}://${authInfo.host}:${authInfo.port}`;
-  const saved = authInfo.isProxy ? [] : passwords.forOrigin(origin);
+  const saved = authInfo.isProxy ? [] : credentialsFor(origin);
   const key = `${webContents?.id}|${origin}`;
+  const tried = authAttempts.get(key) || 0;
 
-  // Primer intento: usar la contraseña guardada sin preguntar
-  if (saved.length && !authAttempts.has(key)) {
-    authAttempts.add(key);
-    callback(saved[0].username, saved[0].password);
+  // Probar sin preguntar las credenciales conocidas (guardadas y predefinidas), una por intento
+  if (tried < saved.length) {
+    authAttempts.set(key, tried + 1);
+    callback(saved[tried].username, saved[tried].password);
     return;
   }
 
@@ -480,9 +512,9 @@ app.on('login', (event, webContents, details, authInfo, callback) => {
     realm: authInfo.realm || '',
     isProxy: authInfo.isProxy,
     username: saved[0]?.username || '',
-    failed: authAttempts.has(key),
+    failed: tried > 0,
   });
-  authAttempts.add(key);
+  authAttempts.set(key, tried + 1);
 });
 
 ui.on('auth-response', (_e, { id, username, password, remember }) => {
