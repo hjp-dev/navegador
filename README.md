@@ -19,8 +19,13 @@ Descargas y Contraseñas. Si escribes una IP o dirección en ese buscador, la ab
 - **Cambiar de pestaña con flechas:** Ctrl+Shift+→ / Ctrl+Shift+← (también Ctrl+Tab).
 
 La barra de navegación quedó minimalista (atrás, adelante, recargar, dirección y la estrella de
-favoritos). El resto —Antenas, Favoritos, Descargas, Contraseñas— se abre desde la página de inicio
-o con sus atajos.
+favoritos), más un botón de menú **⋮** a la derecha con accesos a Antenas, Favoritos, Descargas,
+Contraseñas, pantalla completa y ocultar la barra. El resto también se abre desde la página de
+inicio o con sus atajos.
+
+**Ver todas las pestañas (Ctrl+Shift+Tab):** muestra una vista con todas las pestañas abiertas
+(miniatura y título); al hacer clic vas a la elegida. Muy cómodo con muchas pestañas, sobre todo
+en pantalla completa (donde no se ve la barra de pestañas).
 
 Al abrir un equipo desde la vista **Antenas**, se abre en una pestaña nueva y la vista Antenas
 queda abierta en la pestaña anterior (vuelves a ella desde la barra de pestañas).

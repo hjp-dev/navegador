@@ -386,8 +386,63 @@ $('forward').onclick = () => browser.forward();
 $('reload').onclick = () => browser.reload();
 $('new-tab').onclick = () => browser.newTab();
 $('star').onclick = () => browser.toggleBookmark();
-// Favoritos, Descargas, Contraseñas y Antenas se abren desde la página de inicio o con atajos.
+// Favoritos, Descargas, Contraseñas y Antenas se abren desde la página de inicio, el menú ⋮ o atajos.
 $('dv-close').onclick = () => closeDevicesView();
+
+// ---------- Menú ⋮ ----------
+function toggleAppMenu(show) {
+  const m = $('app-menu');
+  m.hidden = show === undefined ? !m.hidden : !show;
+}
+$('menu-btn').onclick = (e) => { e.stopPropagation(); toggleAppMenu(); };
+document.addEventListener('click', (e) => {
+  if (!$('app-menu').hidden && !e.target.closest('#app-menu') && e.target !== $('menu-btn')) toggleAppMenu(false);
+});
+$('app-menu').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  toggleAppMenu(false);
+  switch (btn.dataset.act) {
+    case 'tabs': browser.tabOverview(); break;
+    case 'antenas': openDevicesView(); break;
+    case 'favoritos': openPanel('bookmarks'); break;
+    case 'descargas': openPanel('downloads'); break;
+    case 'contrasenas': openPanel('passwords'); break;
+    case 'fullscreen': browser.toggleFullscreen(); break;
+    case 'navbar': navbarHidden = !navbarHidden; try { localStorage.setItem('navbar-hidden', navbarHidden ? '1' : '0'); } catch {} applyNavbar(); break;
+  }
+});
+
+// ---------- Vista de todas las pestañas (exposé) ----------
+function closeTabOverview() {
+  $('tab-overview').hidden = true;
+  if (state.devicesOwner != null) syncDevicesView();
+  else browser.setModal(false);
+}
+$('to-close').onclick = () => closeTabOverview();
+$('to-new').onclick = () => { closeTabOverview(); browser.newTab(); };
+
+browser.on('tab-overview', ({ tabs, activeId }) => {
+  const grid = $('to-grid');
+  grid.replaceChildren(...tabs.map(t => {
+    const card = el('div', { className: 'to-card' + (t.id === activeId ? ' active' : ''), title: t.url });
+    const thumb = el('div', { className: 'to-thumb' });
+    if (t.thumb) thumb.style.backgroundImage = `url("${t.thumb}")`;
+    else thumb.append(el('span', { className: 'big', textContent: '🌐' }));
+    const close = el('button', { className: 'x', title: 'Cerrar pestaña', textContent: '✕' });
+    close.onclick = (e) => { e.stopPropagation(); browser.closeTab(t.id); setTimeout(() => browser.tabOverview(), 150); };
+    const bar = el('div', { className: 'to-bar' }, icon(t.favicon), el('span', { className: 't', textContent: t.title }), close);
+    card.append(thumb, bar);
+    card.onclick = () => { browser.activateTab(t.id); closeTabOverview(); };
+    return card;
+  }));
+  $('tab-overview').hidden = false;
+  browser.setModal(true);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('tab-overview').hidden) closeTabOverview();
+});
 $('dv-scan').onclick = () => browser.scanDevices();
 $('dv-status').onclick = () => browser.fetchDeviceStatus();
 $('pw-save').onclick = () => browser.passwordPrompt({ tabId: state.activeId, action: 'save' });

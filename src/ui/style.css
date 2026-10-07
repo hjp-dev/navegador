@@ -395,3 +395,75 @@ progress {
 .dv-link:hover { text-decoration: underline; }
 
 #modal { z-index: 20; }
+
+/* ---------- Menú ⋮ ---------- */
+#app-menu {
+  position: fixed;
+  top: 72px;
+  right: 8px;
+  z-index: 30;
+  min-width: 260px;
+  padding: 6px;
+  background: var(--bar);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.25);
+  display: flex;
+  flex-direction: column;
+}
+#app-menu[hidden] { display: none; }
+#app-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+#app-menu button:hover { background: var(--tab-hover); }
+#app-menu .sc { margin-left: auto; color: var(--muted); font-size: 12px; }
+#app-menu .sep { height: 1px; background: var(--border); margin: 4px 2px; }
+
+/* ---------- Vista de todas las pestañas (exposé) ---------- */
+#tab-overview {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+#tab-overview[hidden] { display: none; }
+.to-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bar);
+}
+.to-header h2 { margin: 0; font-size: 16px; }
+#to-grid {
+  flex: 1; overflow: auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px; padding: 18px; align-content: start;
+}
+.to-card {
+  border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  background: var(--bar); cursor: pointer; display: flex; flex-direction: column;
+}
+.to-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(0,0,0,.18); }
+.to-card.active { border-color: var(--accent); outline: 2px solid var(--accent); }
+.to-thumb {
+  height: 150px; background: var(--tile); background-size: cover; background-position: top center;
+  display: flex; align-items: center; justify-content: center;
+}
+.to-thumb .big { font-size: 48px; opacity: .5; }
+.to-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+.to-bar img, .to-bar .dot { width: 16px; height: 16px; flex: none; }
+.to-bar .dot { border-radius: 50%; background: var(--border); }
+.to-bar .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.to-bar .x { width: 22px; height: 22px; border: none; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; }
+.to-bar .x:hover { background: var(--tab-hover); color: var(--text); }

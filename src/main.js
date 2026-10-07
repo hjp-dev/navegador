@@ -191,6 +191,31 @@ function handleHomeCommand(cmd) {
   if (panel) send('show-panel', panel);
 }
 
+// Vista "todas las pestañas": captura una miniatura de cada pestaña y la manda a la interfaz
+async function openTabOverview() {
+  const list = await Promise.all(tabs.map(async (t) => {
+    const wc = t.view.webContents;
+    let thumb = null;
+    try {
+      // La captura de pestañas en segundo plano puede tardar o no responder: se limita el tiempo
+      const img = await Promise.race([
+        wc.capturePage(),
+        new Promise((resolve) => setTimeout(() => resolve(null), 1200)),
+      ]);
+      if (img && !img.isEmpty()) thumb = img.resize({ width: 360 }).toDataURL();
+    } catch {}
+    const url = wc.getURL();
+    return {
+      id: t.id,
+      title: wc.getTitle() || (isHomeUrl(url) ? 'Inicio' : 'Nueva pestaña'),
+      url: isHomeUrl(url) ? 'Inicio' : url,
+      favicon: t.favicon || null,
+      thumb,
+    };
+  }));
+  send('tab-overview', { tabs: list, activeId });
+}
+
 function activateTab(id) {
   const tab = getTab(id);
   if (!tab) return;
@@ -272,9 +297,9 @@ function buildMenu() {
         { label: 'Nueva pestaña', accelerator: 'CmdOrCtrl+T', click: () => { createTab(); focusAddress(); } },
         { label: 'Cerrar pestaña', accelerator: 'CmdOrCtrl+W', click: () => closeTab(activeId) },
         { label: 'Siguiente pestaña', accelerator: 'Ctrl+Tab', click: () => cycleTab(1) },
-        { label: 'Pestaña anterior', accelerator: 'Ctrl+Shift+Tab', click: () => cycleTab(-1) },
         { label: 'Siguiente pestaña (flecha)', accelerator: 'CmdOrCtrl+Shift+Right', click: () => cycleTab(1) },
         { label: 'Pestaña anterior (flecha)', accelerator: 'CmdOrCtrl+Shift+Left', click: () => cycleTab(-1) },
+        { label: 'Ver todas las pestañas', accelerator: 'CmdOrCtrl+Shift+Tab', click: () => openTabOverview() },
         { label: 'Siguiente pestaña', accelerator: 'Ctrl+PageDown', visible: false, click: () => cycleTab(1) },
         { label: 'Pestaña anterior', accelerator: 'Ctrl+PageUp', visible: false, click: () => cycleTab(-1) },
         { type: 'separator' },
@@ -390,6 +415,8 @@ ui.on('new-tab', (_e, url) => {
 ui.on('open-device', (_e, { url, autologin }) => {
   createTab(normalizeInput(String(url || '')), true, { autologin: !!autologin });
 });
+ui.on('tab-overview', () => openTabOverview());
+ui.on('toggle-fullscreen', () => { if (win) win.setFullScreen(!win.isFullScreen()); });
 ui.on('close-tab', (_e, id) => closeTab(id));
 ui.on('activate-tab', (_e, id) => activateTab(id));
 ui.on('toggle-bookmark', () => toggleBookmark());

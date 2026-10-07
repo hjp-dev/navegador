@@ -21,6 +21,19 @@
       <input id="address" type="text" spellcheck="false" placeholder="Busca o escribe una dirección">
       <button id="star" type="button" class="icon" title="Añadir a favoritos (Ctrl+D)">☆</button>
     </form>
+    <button id="menu-btn" class="icon" title="Menú">⋮</button>
+  </div>
+
+  <div id="app-menu" hidden>
+    <button data-act="tabs">🗂 Ver todas las pestañas <span class="sc">Ctrl+Shift+Tab</span></button>
+    <div class="sep"></div>
+    <button data-act="antenas">📡 Antenas <span class="sc">Ctrl+Shift+U</span></button>
+    <button data-act="favoritos">★ Favoritos <span class="sc">Ctrl+Shift+O</span></button>
+    <button data-act="descargas">⤓ Descargas <span class="sc">Ctrl+J</span></button>
+    <button data-act="contrasenas">🔑 Contraseñas <span class="sc">Ctrl+Shift+P</span></button>
+    <div class="sep"></div>
+    <button data-act="fullscreen">⛶ Pantalla completa <span class="sc">F11</span></button>
+    <button data-act="navbar">▭ Ocultar/mostrar barra <span class="sc">Ctrl+Shift+B</span></button>
   </div>
 
   <div id="infobar" hidden>
@@ -40,6 +53,16 @@
     <ul id="panel-list"></ul>
     <p id="panel-empty" hidden></p>
   </aside>
+
+  <div id="tab-overview" hidden>
+    <div class="to-header">
+      <h2>Pestañas abiertas</h2>
+      <span class="dv-spacer"></span>
+      <button id="to-new" class="text">＋ Nueva pestaña</button>
+      <button id="to-close" class="icon" title="Cerrar (Esc)">✕</button>
+    </div>
+    <div id="to-grid"></div>
+  </div>
 
   <div id="devices-view" hidden>
     <div class="dv-header">
