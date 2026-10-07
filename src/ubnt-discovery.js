@@ -29,10 +29,13 @@ const ipStr = (buf) => [...buf].join('.');
 const clean = (buf) => buf.toString('utf8').replace(/\0+$/, '').trim();
 
 // Interpreta una respuesta UDP. Devuelve el equipo encontrado o null si el paquete no es válido.
+// Un equipo en modo router reporta varias interfaces (LAN/gestión, WAN, etc.), cada una con su
+// IP en un campo 0x02. Se recogen TODAS, no solo la primera.
 function parseReply(msg, fromAddress) {
   // Cabecera: 01 00 + tamaño (2 bytes). Algunos firmwares usan una variante; se valida con tolerancia.
   if (msg.length < 4 || msg[0] !== 0x01) return null;
-  const device = { address: fromAddress, mac: null, ip: fromAddress, firmware: '', name: '', model: '', essid: '' };
+  const device = { address: fromAddress, mac: null, ip: fromAddress, ips: [], firmware: '', name: '', model: '', essid: '' };
+  const addIp = (ip) => { if (ip && ip !== '0.0.0.0' && !device.ips.includes(ip)) device.ips.push(ip); };
   let offset = 4;
   while (offset + 3 <= msg.length) {
     const type = msg[offset];
@@ -41,9 +44,12 @@ function parseReply(msg, fromAddress) {
     if (start + len > msg.length) break;
     const value = msg.subarray(start, start + len);
     switch (TLV[type]) {
-      case 'mac': device.mac = macStr(value); break;
+      case 'mac': if (!device.mac) device.mac = macStr(value); break;
       case 'macip':
-        if (len >= 10) { device.mac = macStr(value.subarray(0, 6)); device.ip = ipStr(value.subarray(6, 10)); }
+        if (len >= 10) {
+          if (!device.mac) device.mac = macStr(value.subarray(0, 6));
+          addIp(ipStr(value.subarray(6, 10)));
+        }
         break;
       case 'firmware': device.firmware = clean(value); break;
       case 'name': device.name = clean(value); break;
@@ -53,6 +59,10 @@ function parseReply(msg, fromAddress) {
     }
     offset = start + len;
   }
+  // La IP por la que respondió (nuestra subred) va primero: es la que se abre por defecto.
+  addIp(fromAddress);
+  device.ips.sort((a, b) => (a === fromAddress ? -1 : b === fromAddress ? 1 : 0));
+  device.ip = device.ips[0] || fromAddress;
   return device.mac || device.firmware || device.model ? device : null;
 }
 
@@ -88,7 +98,15 @@ function scan(timeout = 3000) {
     socket.on('error', finish);
     socket.on('message', (msg, rinfo) => {
       const device = parseReply(msg, rinfo.address);
-      if (device) found.set(device.mac || device.ip, device);
+      if (!device) return;
+      const key = device.mac || device.ip;
+      const prev = found.get(key);
+      if (prev) {
+        // Mismo equipo que respondió otra vez: se juntan las IPs que falten
+        for (const ip of device.ips) if (!prev.ips.includes(ip)) prev.ips.push(ip);
+      } else {
+        found.set(key, device);
+      }
     });
 
     socket.bind(() => {

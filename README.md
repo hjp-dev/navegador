@@ -32,7 +32,9 @@ Solo tiene lo indispensable:
 
 El botón 📡 (Ctrl+Shift+U) busca equipos Ubiquiti (LiteBeam, NanoStation, etc.) en la red local,
 igual que la herramienta oficial "Device Discovery" de Ubiquiti. Envía una consulta por difusión
-(UDP, puerto 10001) y lista cada equipo que responde con su IP, MAC, modelo, firmware y SSID.
+(UDP, puerto 10001) y lista cada equipo que responde con su IP, MAC, modelo, firmware y SSID. Si el equipo
+está en modo router y reporta varias interfaces, muestra todas sus IPs (gestión/LAN y WAN),
+con un botón para abrir cada una.
 Desde cada resultado puedes abrir su panel (http o https) o copiar su IP.
 
 Es muy útil en campo: encuentra la antena aunque tu PC esté en otra subred (por ejemplo, tu PC

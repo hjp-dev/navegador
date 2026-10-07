@@ -219,16 +219,22 @@ function renderDevice(d) {
     return btn;
   };
   const title = d.name || d.model || 'Equipo Ubiquiti';
+  const ips = (d.ips && d.ips.length) ? d.ips : [d.ip];
+  const extra = ips.slice(1); // IPs además de la de gestión (p. ej. WAN en modo router)
   const details = [d.model, d.firmware, d.essid && `SSID: ${d.essid}`, d.mac].filter(Boolean).join(' · ');
-  return el('li', { className: 'item', title: details },
+  const sub = [extra.length ? `Otras IPs: ${extra.join(', ')}` : null, details].filter(Boolean).join(' · ');
+  const actions = [
+    action('Abrir', () => browser.navigate(ips[0])),
+    action('Abrir (https)', () => browser.navigate('https://' + ips[0])),
+    action('Copiar IP', () => navigator.clipboard?.writeText(ips[0])),
+  ];
+  // Un botón para abrir cada IP adicional (por ejemplo, la WAN)
+  for (const ip of extra) actions.push(action(`Abrir ${ip}`, () => browser.navigate(ip)));
+  return el('li', { className: 'item', title: ips.join(', ') },
     el('div', { className: 'info' },
-      el('div', { className: 'name', textContent: `${title} — ${d.ip}` }),
-      el('div', { className: 'sub', textContent: details }),
-      el('div', { className: 'actions' },
-        action('Abrir', () => browser.navigate(d.ip)),
-        action('Abrir (https)', () => browser.navigate('https://' + d.ip)),
-        action('Copiar IP', () => navigator.clipboard?.writeText(d.ip)),
-      ),
+      el('div', { className: 'name', textContent: `${title} — ${ips[0]}` }),
+      el('div', { className: 'sub', textContent: sub }),
+      el('div', { className: 'actions' }, ...actions),
     ),
   );
 }
