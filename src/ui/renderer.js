@@ -215,6 +215,7 @@ const DEVICE_COLUMNS = [
   { key: 'signal',   label: 'Señal',    get: (d) => d.status && d.status.signal != null ? `${d.status.signal} dBm` : '' },
   { key: 'ccq',      label: 'CCQ',      get: (d) => d.status && d.status.ccq != null ? `${d.status.ccq} %` : '' },
   { key: 'firmware', label: 'Firmware', get: (d) => (d.status && d.status.fwversion) || d.firmware || '' },
+  { key: 'estado',   label: 'Estado consulta', get: (d) => !d.status ? '' : (d.status.ok ? `OK (${d.status.scheme})` : `Error: ${d.status.error}`) },
 ];
 
 function loadColVis() {

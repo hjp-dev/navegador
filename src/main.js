@@ -508,7 +508,7 @@ ui.on('fetch-device-status', async () => {
   send('status-state', { fetching: true });
   await Promise.all(lastDevices.map(async (d) => {
     const ip = d.ip;
-    const creds = credentialsFor(`http://${ip}`)[0] || { username: 'ubnt', password: 'ubnt' };
+    const creds = credentialsFor(`https://${ip}`)[0] || credentialsFor(`http://${ip}`)[0] || { username: 'ubnt', password: 'ubnt' };
     let result;
     try {
       result = await status.fetchStatus(ip, creds, isPrivateHost);

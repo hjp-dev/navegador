@@ -42,9 +42,11 @@ para Nombre, Modelo, IP de gestión/LAN, WAN/otras IPs, MAC, SSID, Modo, Señal,
 El botón **Columnas** permite ocultar las que no quieras ver (se recuerda tu elección).
 
 La **señal y el CCQ** no vienen en el escaneo (el protocolo de descubrimiento no los incluye):
-con el botón **Obtener señal/CCQ**, el navegador entra a cada equipo con las credenciales
-guardadas/predefinidas (su `status.cgi`) y completa esas columnas. Es una función experimental,
-probada contra un equipo simulado; en antenas reales puede variar según el firmware.
+con el botón **Obtener señal/CCQ**, el navegador lee `status.cgi` de cada equipo y completa esas
+columnas. Para autenticarse **reutiliza la sesión que ya iniciaste en el navegador** (si abriste
+la antena y entraste, no vuelve a pedir contraseña, aunque no sea la de fábrica); si no hay sesión,
+prueba con las credenciales guardadas/predefinidas. La columna **Estado consulta** muestra si la
+lectura fue correcta o el error, para diagnosticar equipo por equipo.
 
 Es muy útil en campo: encuentra la antena aunque tu PC esté en otra subred (por ejemplo, tu PC
 en `192.168.0.x` y la antena en `192.168.1.20`), así sabes qué IP configurar. Solo funciona en la
