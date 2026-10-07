@@ -2,6 +2,7 @@ const { app, BrowserWindow, WebContentsView, ipcMain, Menu, shell, session, clip
 const path = require('path');
 const fs = require('fs');
 const passwords = require('./passwords');
+const discovery = require('./ubnt-discovery');
 
 const HOME_URL = 'https://www.google.com';
 const SEARCH_URL = 'https://www.google.com/search?q=';
@@ -249,6 +250,7 @@ function buildMenu() {
         { label: 'Favoritos', accelerator: 'CmdOrCtrl+Shift+O', click: () => send('show-panel', 'bookmarks') },
         { label: 'Descargas', accelerator: 'CmdOrCtrl+J', click: () => send('show-panel', 'downloads') },
         { label: 'Contraseñas', accelerator: 'CmdOrCtrl+Shift+P', click: () => send('show-panel', 'passwords') },
+        { label: 'Antenas Ubiquiti', accelerator: 'CmdOrCtrl+Shift+U', click: () => send('show-panel', 'devices') },
         { type: 'separator' },
         { label: 'Herramientas de desarrollo', accelerator: 'F12', click: () => wc()?.toggleDevTools() },
         { role: 'quit', label: 'Salir' },
@@ -476,6 +478,22 @@ ui.on('preset-add', (_e, preset) => {
   if (!preset || !String(preset.password || '')) return;
   passwords.savePreset(preset);
   sendPasswords();
+});
+
+// ---------- Escaneo de antenas Ubiquiti ----------
+let scanning = false;
+
+ui.on('scan-devices', async () => {
+  if (scanning) return;
+  scanning = true;
+  send('scan-state', { scanning: true });
+  let devices = [];
+  try {
+    devices = await discovery.scan(3000);
+  } catch {}
+  scanning = false;
+  send('scan-state', { scanning: false });
+  send('devices', devices);
 });
 
 // ---------- Certificados de equipos de la red interna ----------

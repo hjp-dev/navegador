@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 
-const state = { tabs: [], activeId: null, bookmarks: [], downloads: [], passwords: { entries: [], presets: [] }, panel: null };
+const state = { tabs: [], activeId: null, bookmarks: [], downloads: [], passwords: { entries: [], presets: [] }, devices: [], scanning: false, scanned: false, panel: null };
 
 const address = $('address');
 let editingAddress = false;
@@ -133,6 +133,20 @@ function renderPanel() {
       ...others.map(p => renderPassword(p, false)),
     ].filter(Boolean));
     empty.hidden = true;
+  } else if (state.panel === 'devices') {
+    $('panel-title').textContent = 'Antenas Ubiquiti';
+    $('panel-clear').hidden = true;
+    empty.textContent = state.scanning
+      ? 'Buscando equipos en la red…'
+      : (state.scanned ? 'No se encontraron equipos Ubiquiti en la red local.' : '');
+    const scan = el('button', { className: 'primary', textContent: state.scanning ? 'Buscando…' : 'Buscar equipos' });
+    scan.disabled = state.scanning;
+    scan.onclick = () => browser.scanDevices();
+    list.replaceChildren(
+      el('li', { className: 'item' }, el('div', { className: 'scan-bar' }, scan)),
+      ...state.devices.map(renderDevice),
+    );
+    empty.hidden = state.scanning ? false : state.devices.length > 0 || !state.scanned;
   } else {
     $('panel-title').textContent = 'Descargas';
     $('panel-clear').hidden = !state.downloads.some(d => !['progressing', 'paused'].includes(d.state));
@@ -198,6 +212,27 @@ function renderPresetForm() {
   return el('li', { className: 'item' }, form);
 }
 
+function renderDevice(d) {
+  const action = (label, fn) => {
+    const btn = el('button', { className: 'text', textContent: label });
+    btn.onclick = fn;
+    return btn;
+  };
+  const title = d.name || d.model || 'Equipo Ubiquiti';
+  const details = [d.model, d.firmware, d.essid && `SSID: ${d.essid}`, d.mac].filter(Boolean).join(' · ');
+  return el('li', { className: 'item', title: details },
+    el('div', { className: 'info' },
+      el('div', { className: 'name', textContent: `${title} — ${d.ip}` }),
+      el('div', { className: 'sub', textContent: details }),
+      el('div', { className: 'actions' },
+        action('Abrir', () => browser.navigate(d.ip)),
+        action('Abrir (https)', () => browser.navigate('https://' + d.ip)),
+        action('Copiar IP', () => navigator.clipboard?.writeText(d.ip)),
+      ),
+    ),
+  );
+}
+
 function renderDownload(d) {
   const action = (label, name) => {
     const btn = el('button', { className: 'text', textContent: label });
@@ -248,6 +283,7 @@ $('star').onclick = () => browser.toggleBookmark();
 $('bookmarks-btn').onclick = () => openPanel('bookmarks');
 $('downloads-btn').onclick = () => openPanel('downloads');
 $('passwords-btn').onclick = () => openPanel('passwords');
+$('devices-btn').onclick = () => { const wasClosed = state.panel !== 'devices'; openPanel('devices'); if (wasClosed && state.panel === 'devices' && !state.scanning && !state.scanned) browser.scanDevices(); };
 $('pw-save').onclick = () => browser.passwordPrompt({ tabId: state.activeId, action: 'save' });
 $('pw-never').onclick = () => browser.passwordPrompt({ tabId: state.activeId, action: 'never' });
 $('pw-dismiss').onclick = () => browser.passwordPrompt({ tabId: state.activeId, action: 'dismiss' });
@@ -286,6 +322,17 @@ browser.on('tabs', ({ tabs, activeId, bookmarks }) => {
 browser.on('passwords', (passwords) => {
   state.passwords = passwords;
   if (state.panel === 'passwords') renderPanel();
+});
+
+browser.on('scan-state', ({ scanning }) => {
+  state.scanning = scanning;
+  if (scanning) state.scanned = true;
+  if (state.panel === 'devices') renderPanel();
+});
+
+browser.on('devices', (devices) => {
+  state.devices = devices;
+  if (state.panel === 'devices') renderPanel();
 });
 
 // ---------- Inicio de sesión HTTP (ventanita de usuario/contraseña del router) ----------

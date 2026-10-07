@@ -325,3 +325,6 @@ progress {
   user-select: text;
 }
 .preset-form button { align-self: flex-end; }
+
+.scan-bar { width: 100%; }
+.scan-bar button { width: 100%; }

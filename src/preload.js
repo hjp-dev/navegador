@@ -24,8 +24,9 @@ contextBridge.exposeInMainWorld('browser', {
   removePassword: send('pw-remove'),
   addPreset: send('preset-add'),
   authResponse: send('auth-response'),
+  scanDevices: send('scan-devices'),
   on: (channel, callback) => {
-    const allowed = ['tabs', 'downloads', 'passwords', 'show-panel', 'focus-address', 'auth-request'];
+    const allowed = ['tabs', 'downloads', 'passwords', 'show-panel', 'focus-address', 'auth-request', 'devices', 'scan-state'];
     if (allowed.includes(channel)) ipcRenderer.on(channel, (_e, data) => callback(data));
   },
 });

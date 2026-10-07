@@ -28,6 +28,18 @@ Solo tiene lo indispensable:
   - Las contraseñas se guardan en `contrasenas.json`, cifradas con el sistema (Windows: DPAPI;
     Ubuntu: llavero de GNOME/KDE). Si el sistema no tiene llavero disponible se guardan sin cifrar.
 
+### Escanear antenas Ubiquiti
+
+El botón 📡 (Ctrl+Shift+U) busca equipos Ubiquiti (LiteBeam, NanoStation, etc.) en la red local,
+igual que la herramienta oficial "Device Discovery" de Ubiquiti. Envía una consulta por difusión
+(UDP, puerto 10001) y lista cada equipo que responde con su IP, MAC, modelo, firmware y SSID.
+Desde cada resultado puedes abrir su panel (http o https) o copiar su IP.
+
+Es muy útil en campo: encuentra la antena aunque tu PC esté en otra subred (por ejemplo, tu PC
+en `192.168.0.x` y la antena en `192.168.1.20`), así sabes qué IP configurar. Solo funciona en la
+misma red local (no atraviesa routers). La primera vez, el firewall de Windows puede pedir permiso
+de acceso a la red.
+
 ### Credenciales predefinidas para equipos (routers, ONUs, antenas)
 
 Además de las contraseñas que guardas al iniciar sesión, puedes definir credenciales fijas
@@ -109,6 +121,7 @@ npm run dist   # genera un instalador en dist/ (AppImage, .exe o .dmg según tu 
 | Ver favoritos | Ctrl+Shift+O |
 | Ver descargas | Ctrl+J |
 | Contraseñas guardadas | Ctrl+Shift+P |
+| Escanear antenas Ubiquiti | Ctrl+Shift+U |
 
 (En macOS usa Cmd en lugar de Ctrl.)
 
@@ -120,5 +133,6 @@ src/
   passwords.js     Almacén cifrado de contraseñas
   preload.js       Puente seguro entre la interfaz y el proceso principal
   page-preload.js  Se ejecuta en las páginas: detecta y rellena formularios de inicio de sesión
+  ubnt-discovery.js Escaneo de equipos Ubiquiti en la red local (UDP 10001)
   ui/            Interfaz (barra de pestañas, navegación y panel lateral)
 ```
