@@ -390,3 +390,6 @@ progress {
 #dv-table tbody tr:hover { background: var(--tab-hover); }
 .dv-actions { display: flex; gap: 6px; }
 #dv-empty { padding: 24px; color: var(--muted); text-align: center; }
+
+.dv-link { color: var(--accent); text-decoration: none; cursor: pointer; }
+.dv-link:hover { text-decoration: underline; }

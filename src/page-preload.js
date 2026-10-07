@@ -72,6 +72,49 @@ else watchForms();
 // Relleno manual desde el panel de contraseñas
 ipcRenderer.on('pw:fill', (_e, credential) => fill(credential, true));
 
+// ---------- Autologin (abrir el equipo ya logueado desde la vista Antenas) ----------
+// Envía el formulario de login una vez que está relleno. Sirve para airOS 6 (formulario normal)
+// y airOS 8 (login dibujado con JS). Reintenta un rato por si el formulario tarda en aparecer.
+let autoSubmitted = false;
+
+function clickLoginButton() {
+  const fields = findLoginFields();
+  if (!fields) return false;
+  // 1) Si el campo está dentro de un formulario, enviarlo
+  const formEl = fields.password.form;
+  if (formEl) {
+    if (typeof formEl.requestSubmit === 'function') formEl.requestSubmit();
+    else formEl.submit();
+    return true;
+  }
+  // 2) Si no hay formulario (airOS 8), buscar un botón de login y pulsarlo
+  const buttons = [...document.querySelectorAll('button, input[type=submit], input[type=button], a[role=button], [onclick]')].filter(visible);
+  const re = /\b(login|log ?in|ingresar|iniciar|entrar|acceder|sign ?in|aceptar|ok)\b/i;
+  const btn = buttons.find(b => re.test((b.textContent || '') + ' ' + (b.value || '') + ' ' + (b.id || '')))
+    || buttons.find(b => b.type === 'submit') || buttons[0];
+  if (btn) { btn.click(); return true; }
+  // 3) Último recurso: Enter en el campo de contraseña
+  fields.password.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
+  return true;
+}
+
+async function autoLogin() {
+  if (autoSubmitted) return;
+  const fields = findLoginFields();
+  if (!fields) return; // todavía no apareció el login; se reintentará
+  if (saved === null) saved = await ipcRenderer.invoke('pw:get').catch(() => []);
+  if (!saved.length) { autoSubmitted = true; return; } // sin credenciales, no hay autologin
+  fill(saved[0], true);
+  setTimeout(() => { if (!autoSubmitted) { autoSubmitted = clickLoginButton(); } }, 250);
+}
+
+ipcRenderer.on('pw:autosubmit', () => {
+  // Reintenta varias veces mientras no se haya enviado (login que tarda en dibujarse)
+  let n = 0;
+  const t = setInterval(() => { if (autoSubmitted || n++ > 12) clearInterval(t); else autoLogin(); }, 400);
+  autoLogin();
+});
+
 // ---------- Detectar envío del login ----------
 let lastSent = '';
 

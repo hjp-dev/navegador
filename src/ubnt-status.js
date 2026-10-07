@@ -85,6 +85,11 @@ function parseStatus(bodyText, scheme) {
 
   // Throughput (airOS 8 lo trae en w.throughput, en kbps)
   const tp = w.throughput || {};
+  const sta0 = stations[0] || {};
+  const polling = w.polling || {};
+  const remote = w.remote || {};
+  const airmax = w.airmax || {};
+  const gps = remote.gps || json.gps || {};
 
   return {
     ok: true,
@@ -100,11 +105,25 @@ function parseStatus(bodyText, scheme) {
     distance: w.distance ?? null,
     noise: (w.noisef ?? null),
     txpower: (w.txpower ?? null),
+    frequency: w.frequency ?? null,    // MHz
     peers: stations.length || (w.count ?? null),
     uptime: h.uptime ?? null,
     fwversion: h.fwversion || '',
     hostname: h.hostname || '',
     devmodel: h.devmodel || '',
+    temperature: h.temperature ?? null,
+    // --- Datos extra de airOS 8 ---
+    dlCapacity: polling.dl_capacity ?? null,  // kbps
+    ulCapacity: polling.ul_capacity ?? null,  // kbps
+    dlSignalExpect: sta0.dl_signal_expect ?? null, // dBm
+    ulSignalExpect: sta0.ul_signal_expect ?? null, // dBm
+    cinrRx: airmax.rx?.cinr ?? null,
+    cinrTx: airmax.tx?.cinr ?? null,
+    remoteName: remote.hostname || '',
+    remotePlatform: remote.platform || '',
+    remoteSignal: remote.signal ?? null,       // dBm (señal del equipo del otro lado)
+    gpsLat: (gps.lat != null && gps.lat !== '') ? gps.lat : null,
+    gpsLon: (gps.lon != null && gps.lon !== '') ? gps.lon : null,
   };
 }
 

@@ -52,6 +52,13 @@ Compatibilidad: en **airOS 6** la señal sale de `wireless.signal` y trae **CCQ*
 la señal viene por enlace (`wireless.sta[]`) y **ya no existe CCQ** (Ubiquiti lo quitó), por eso esa
 columna queda vacía en v8; a cambio se muestra el **Throughput** cuando el equipo lo reporta.
 
+En la tabla, la **IP de gestión y las IPs WAN son enlaces**: al pulsarlas, el equipo se abre en una
+**pestaña nueva** (se cierra la vista Antenas para verla) y el navegador **inicia sesión solo** con
+las credenciales guardadas/predefinidas (autologin, funciona en airOS 6 y 8). Las columnas
+opcionales de airOS 8 (frecuencia, ruido, Tx power, distancia, capacidad DL/UL, señal esperada
+DL/UL, CINR, equipo remoto, GPS, temperatura) están ocultas por defecto: se activan desde el botón
+**Columnas**.
+
 Para que funcione en toda la red sin abrir cada antena, carga una vez tu credencial común en el
 panel 🔑 → **Predefinidas**, dejando el campo de IPs **vacío** (= cualquier equipo de la red interna).
 Puedes cargar varias (p. ej. la vieja y la nueva contraseña); se prueban todas.

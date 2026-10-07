@@ -122,7 +122,7 @@ function layout() {
 }
 
 // ---------- Pestañas ----------
-function createTab(url = HOME_URL, activate = true) {
+function createTab(url = HOME_URL, activate = true, opts = {}) {
   const view = new WebContentsView({
     webPreferences: {
       preload: path.join(__dirname, 'page-preload.js'),
@@ -131,11 +131,21 @@ function createTab(url = HOME_URL, activate = true) {
       sandbox: true,
     },
   });
-  const tab = { id: nextTabId++, view, favicon: null, pwPrompt: null };
+  const tab = { id: nextTabId++, view, favicon: null, pwPrompt: null, autologin: !!opts.autologin };
   tabs.push(tab);
 
   const wc = view.webContents;
   const update = () => sendTabs();
+  // Autologin: al terminar de cargar, pide a la página que rellene y envíe el login
+  if (opts.autologin) {
+    let tries = 0;
+    const kick = () => {
+      if (tries++ > 4) return; // reintenta algunas veces (airOS 8 dibuja el login con JS)
+      for (const frame of wc.mainFrame.framesInSubtree) frame.send('pw:autosubmit');
+    };
+    wc.on('did-finish-load', kick);
+    wc.on('did-frame-finish-load', kick);
+  }
   wc.on('page-title-updated', update);
   wc.on('did-start-loading', update);
   wc.on('did-stop-loading', update);
@@ -345,6 +355,10 @@ ui.on('new-tab', (_e, url) => {
     createTab();
     focusAddress();
   }
+});
+// Abrir un equipo en pestaña nueva, con autologin (desde la vista Antenas)
+ui.on('open-device', (_e, { url, autologin }) => {
+  createTab(normalizeInput(String(url || '')), true, { autologin: !!autologin });
 });
 ui.on('close-tab', (_e, id) => closeTab(id));
 ui.on('activate-tab', (_e, id) => activateTab(id));

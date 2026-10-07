@@ -223,11 +223,24 @@ const DEVICE_COLUMNS = [
   { key: 'throughput', label: 'Throughput ↓/↑', get: (d) => d.status && (d.status.rxthroughput != null || d.status.txthroughput != null) ? `${fmtKbps(d.status.rxthroughput)} / ${fmtKbps(d.status.txthroughput)}` : '' },
   { key: 'firmware', label: 'Firmware', get: (d) => (d.status && d.status.fwversion) || d.firmware || '' },
   { key: 'estado',   label: 'Estado consulta', get: (d) => !d.status ? '' : (d.status.ok ? `OK (${d.status.scheme})` : `Error: ${d.status.error}`) },
+  // --- Columnas opcionales (ocultas por defecto; se activan desde "Columnas") ---
+  { key: 'freq',     label: 'Frecuencia', def: false, get: (d) => d.status && d.status.frequency != null ? `${d.status.frequency} MHz` : '' },
+  { key: 'noise',    label: 'Ruido',      def: false, get: (d) => d.status && d.status.noise != null ? `${d.status.noise} dBm` : '' },
+  { key: 'txpower',  label: 'Tx power',   def: false, get: (d) => d.status && d.status.txpower != null ? `${d.status.txpower} dBm` : '' },
+  { key: 'distance', label: 'Distancia',  def: false, get: (d) => d.status && d.status.distance != null ? `${d.status.distance} m` : '' },
+  { key: 'dlcap',    label: 'Capacidad DL/UL', def: false, get: (d) => d.status && (d.status.dlCapacity != null || d.status.ulCapacity != null) ? `${fmtKbps(d.status.dlCapacity)} / ${fmtKbps(d.status.ulCapacity)}` : '' },
+  { key: 'expsig',   label: 'Señal esperada DL/UL', def: false, get: (d) => d.status && (d.status.dlSignalExpect != null || d.status.ulSignalExpect != null) ? `${d.status.dlSignalExpect ?? '—'} / ${d.status.ulSignalExpect ?? '—'} dBm` : '' },
+  { key: 'cinr',     label: 'CINR Rx/Tx',  def: false, get: (d) => d.status && (d.status.cinrRx != null || d.status.cinrTx != null) ? `${d.status.cinrRx ?? '—'} / ${d.status.cinrTx ?? '—'}` : '' },
+  { key: 'remote',   label: 'Equipo remoto', def: false, get: (d) => d.status && d.status.remoteName ? `${d.status.remoteName}${d.status.remotePlatform ? ` (${d.status.remotePlatform})` : ''}${d.status.remoteSignal != null ? ` · ${d.status.remoteSignal} dBm` : ''}` : '' },
+  { key: 'gps',      label: 'GPS', def: false, get: (d) => d.status && d.status.gpsLat != null && d.status.gpsLon != null ? `${d.status.gpsLat}, ${d.status.gpsLon}` : '' },
+  { key: 'temp',     label: 'Temp.', def: false, get: (d) => d.status && d.status.temperature ? `${d.status.temperature} °C` : '' },
 ];
 
+const colDefault = (c) => c.def !== false;
 function loadColVis() {
-  try { return { ...Object.fromEntries(DEVICE_COLUMNS.map(c => [c.key, true])), ...JSON.parse(localStorage.getItem('dv-cols') || '{}') }; }
-  catch { return Object.fromEntries(DEVICE_COLUMNS.map(c => [c.key, true])); }
+  const base = Object.fromEntries(DEVICE_COLUMNS.map(c => [c.key, colDefault(c)]));
+  try { return { ...base, ...JSON.parse(localStorage.getItem('dv-cols') || '{}') }; }
+  catch { return base; }
 }
 let colVis = loadColVis();
 function saveColVis() { try { localStorage.setItem('dv-cols', JSON.stringify(colVis)); } catch {} }
@@ -241,6 +254,12 @@ function openDevicesView() {
 function closeDevicesView() {
   $('devices-view').hidden = true;
   browser.setModal(false);
+}
+
+// Abre el equipo en una pestaña nueva (cerrando la vista Antenas) e intenta autologin.
+function openDeviceInTab(ipOrUrl) {
+  closeDevicesView();
+  browser.openDevice({ url: ipOrUrl, autologin: true });
 }
 
 function renderColToggles() {
@@ -259,11 +278,34 @@ function renderDevicesTable() {
 
   const rows = $('dv-rows');
   rows.replaceChildren(...state.devices.map(d => {
-    const tr = el('tr', {}, ...cols.map(c => el('td', { textContent: c.get(d) || '—' })));
-    const open = (label, url) => { const b = el('button', { className: 'text', textContent: label }); b.onclick = () => browser.navigate(url); return b; };
-    const copy = el('button', { className: 'text', textContent: 'Copiar IP' });
-    copy.onclick = () => navigator.clipboard?.writeText(mgmtIp(d));
-    tr.append(el('td', { className: 'dv-actions' }, open('Abrir', mgmtIp(d)), open('https', 'https://' + mgmtIp(d)), copy));
+    const tr = el('tr', {}, ...cols.map(c => {
+      // La IP de gestión y las IPs WAN se muestran como enlaces: abren en pestaña nueva con autologin
+      if (c.key === 'lan') {
+        const link = el('a', { className: 'dv-link', href: '#', textContent: mgmtIp(d) });
+        link.onclick = (e) => { e.preventDefault(); openDeviceInTab(mgmtIp(d)); };
+        return el('td', {}, link);
+      }
+      if (c.key === 'wan') {
+        const extras = (d.ips && d.ips.length) ? d.ips.slice(1) : [];
+        if (!extras.length) return el('td', { textContent: '—' });
+        const td = el('td', {});
+        extras.forEach((ip, i) => {
+          const link = el('a', { className: 'dv-link', href: '#', textContent: ip });
+          link.onclick = (e) => { e.preventDefault(); openDeviceInTab(ip); };
+          if (i) td.append(document.createTextNode(', '));
+          td.append(link);
+        });
+        return td;
+      }
+      return el('td', { textContent: c.get(d) || '—' });
+    }));
+    const btn = (label, fn) => { const b = el('button', { className: 'text', textContent: label }); b.onclick = fn; return b; };
+    const copy = btn('Copiar IP', () => navigator.clipboard?.writeText(mgmtIp(d)));
+    tr.append(el('td', { className: 'dv-actions' },
+      btn('Abrir', () => openDeviceInTab(mgmtIp(d))),
+      btn('https', () => openDeviceInTab('https://' + mgmtIp(d))),
+      copy,
+    ));
     return tr;
   }));
 
