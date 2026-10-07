@@ -45,6 +45,28 @@
     <p id="panel-empty" hidden></p>
   </aside>
 
+  <div id="devices-view" hidden>
+    <div class="dv-header">
+      <h2>Antenas Ubiquiti</h2>
+      <button id="dv-scan" class="primary">Buscar equipos</button>
+      <button id="dv-status" class="text">Obtener señal/CCQ</button>
+      <details id="dv-cols">
+        <summary>Columnas ▾</summary>
+        <div id="dv-cols-list"></div>
+      </details>
+      <span id="dv-count"></span>
+      <span class="dv-spacer"></span>
+      <button id="dv-close" class="icon" title="Cerrar">✕</button>
+    </div>
+    <div id="dv-body">
+      <table id="dv-table">
+        <thead><tr id="dv-head"></tr></thead>
+        <tbody id="dv-rows"></tbody>
+      </table>
+      <p id="dv-empty" hidden></p>
+    </div>
+  </div>
+
   <div id="modal" hidden>
     <form id="auth-form">
       <h2>Iniciar sesión</h2>

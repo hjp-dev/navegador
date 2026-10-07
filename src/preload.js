@@ -25,8 +25,9 @@ contextBridge.exposeInMainWorld('browser', {
   addPreset: send('preset-add'),
   authResponse: send('auth-response'),
   scanDevices: send('scan-devices'),
+  fetchDeviceStatus: send('fetch-device-status'),
   on: (channel, callback) => {
-    const allowed = ['tabs', 'downloads', 'passwords', 'show-panel', 'focus-address', 'auth-request', 'devices', 'scan-state'];
+    const allowed = ['tabs', 'downloads', 'passwords', 'show-panel', 'focus-address', 'auth-request', 'devices', 'scan-state', 'device-status', 'status-state'];
     if (allowed.includes(channel)) ipcRenderer.on(channel, (_e, data) => callback(data));
   },
 });

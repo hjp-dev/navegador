@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 
-const state = { tabs: [], activeId: null, bookmarks: [], downloads: [], passwords: { entries: [], presets: [] }, devices: [], scanning: false, scanned: false, panel: null };
+const state = { tabs: [], activeId: null, bookmarks: [], downloads: [], passwords: { entries: [], presets: [] }, devices: [], scanning: false, scanned: false, fetchingStatus: false, panel: null };
 
 const address = $('address');
 let editingAddress = false;
@@ -133,20 +133,6 @@ function renderPanel() {
       ...others.map(p => renderPassword(p, false)),
     ].filter(Boolean));
     empty.hidden = true;
-  } else if (state.panel === 'devices') {
-    $('panel-title').textContent = 'Antenas Ubiquiti';
-    $('panel-clear').hidden = true;
-    empty.textContent = state.scanning
-      ? 'Buscando equipos en la red…'
-      : (state.scanned ? 'No se encontraron equipos Ubiquiti en la red local.' : '');
-    const scan = el('button', { className: 'primary', textContent: state.scanning ? 'Buscando…' : 'Buscar equipos' });
-    scan.disabled = state.scanning;
-    scan.onclick = () => browser.scanDevices();
-    list.replaceChildren(
-      el('li', { className: 'item' }, el('div', { className: 'scan-bar' }, scan)),
-      ...state.devices.map(renderDevice),
-    );
-    empty.hidden = state.scanning ? false : state.devices.length > 0 || !state.scanned;
   } else {
     $('panel-title').textContent = 'Descargas';
     $('panel-clear').hidden = !state.downloads.some(d => !['progressing', 'paused'].includes(d.state));
@@ -212,31 +198,83 @@ function renderPresetForm() {
   return el('li', { className: 'item' }, form);
 }
 
-function renderDevice(d) {
-  const action = (label, fn) => {
-    const btn = el('button', { className: 'text', textContent: label });
-    btn.onclick = fn;
-    return btn;
-  };
-  const title = d.name || d.model || 'Equipo Ubiquiti';
-  const ips = (d.ips && d.ips.length) ? d.ips : [d.ip];
-  const extra = ips.slice(1); // IPs además de la de gestión (p. ej. WAN en modo router)
-  const details = [d.model, d.firmware, d.essid && `SSID: ${d.essid}`, d.mac].filter(Boolean).join(' · ');
-  const sub = [extra.length ? `Otras IPs: ${extra.join(', ')}` : null, details].filter(Boolean).join(' · ');
-  const actions = [
-    action('Abrir', () => browser.navigate(ips[0])),
-    action('Abrir (https)', () => browser.navigate('https://' + ips[0])),
-    action('Copiar IP', () => navigator.clipboard?.writeText(ips[0])),
-  ];
-  // Un botón para abrir cada IP adicional (por ejemplo, la WAN)
-  for (const ip of extra) actions.push(action(`Abrir ${ip}`, () => browser.navigate(ip)));
-  return el('li', { className: 'item', title: ips.join(', ') },
-    el('div', { className: 'info' },
-      el('div', { className: 'name', textContent: `${title} — ${ips[0]}` }),
-      el('div', { className: 'sub', textContent: sub }),
-      el('div', { className: 'actions' }, ...actions),
-    ),
-  );
+// ---------- Vista completa de antenas (tabla con filtro de columnas) ----------
+const deviceKey = (d) => d.mac || d.ip;
+const mgmtIp = (d) => ((d.ips && d.ips.length) ? d.ips[0] : d.ip);
+const wanIps = (d) => ((d.ips && d.ips.length) ? d.ips.slice(1) : []).join(', ');
+
+// Definición de columnas. `get` devuelve el texto de la celda.
+const DEVICE_COLUMNS = [
+  { key: 'name',     label: 'Nombre',   get: (d) => d.name || '' },
+  { key: 'model',    label: 'Modelo',   get: (d) => d.model || '' },
+  { key: 'lan',      label: 'IP (gestión/LAN)', get: (d) => mgmtIp(d) },
+  { key: 'wan',      label: 'WAN / otras IPs',  get: (d) => wanIps(d) },
+  { key: 'mac',      label: 'MAC',      get: (d) => d.mac || '' },
+  { key: 'essid',    label: 'SSID',     get: (d) => d.essid || (d.status && d.status.essid) || '' },
+  { key: 'mode',     label: 'Modo',     get: (d) => (d.status && d.status.mode) || '' },
+  { key: 'signal',   label: 'Señal',    get: (d) => d.status && d.status.signal != null ? `${d.status.signal} dBm` : '' },
+  { key: 'ccq',      label: 'CCQ',      get: (d) => d.status && d.status.ccq != null ? `${d.status.ccq} %` : '' },
+  { key: 'firmware', label: 'Firmware', get: (d) => (d.status && d.status.fwversion) || d.firmware || '' },
+];
+
+function loadColVis() {
+  try { return { ...Object.fromEntries(DEVICE_COLUMNS.map(c => [c.key, true])), ...JSON.parse(localStorage.getItem('dv-cols') || '{}') }; }
+  catch { return Object.fromEntries(DEVICE_COLUMNS.map(c => [c.key, true])); }
+}
+let colVis = loadColVis();
+function saveColVis() { try { localStorage.setItem('dv-cols', JSON.stringify(colVis)); } catch {} }
+
+function openDevicesView() {
+  $('devices-view').hidden = false;
+  browser.setModal(true); // oculta la página para mostrar la tabla a pantalla completa
+  renderDevicesView();
+  if (!state.scanning && !state.scanned) browser.scanDevices();
+}
+function closeDevicesView() {
+  $('devices-view').hidden = true;
+  browser.setModal(false);
+}
+
+function renderColToggles() {
+  const box = $('dv-cols-list');
+  box.replaceChildren(...DEVICE_COLUMNS.map(c => {
+    const cb = el('input', { type: 'checkbox', checked: colVis[c.key] !== false });
+    cb.onchange = () => { colVis[c.key] = cb.checked; saveColVis(); renderDevicesTable(); };
+    return el('label', {}, cb, document.createTextNode(' ' + c.label));
+  }));
+}
+
+function renderDevicesTable() {
+  const cols = DEVICE_COLUMNS.filter(c => colVis[c.key] !== false);
+  const head = $('dv-head');
+  head.replaceChildren(...cols.map(c => el('th', { textContent: c.label })), el('th', { textContent: 'Acciones' }));
+
+  const rows = $('dv-rows');
+  rows.replaceChildren(...state.devices.map(d => {
+    const tr = el('tr', {}, ...cols.map(c => el('td', { textContent: c.get(d) || '—' })));
+    const open = (label, url) => { const b = el('button', { className: 'text', textContent: label }); b.onclick = () => browser.navigate(url); return b; };
+    const copy = el('button', { className: 'text', textContent: 'Copiar IP' });
+    copy.onclick = () => navigator.clipboard?.writeText(mgmtIp(d));
+    tr.append(el('td', { className: 'dv-actions' }, open('Abrir', mgmtIp(d)), open('https', 'https://' + mgmtIp(d)), copy));
+    return tr;
+  }));
+
+  const empty = $('dv-empty');
+  if (state.scanning) { empty.textContent = 'Buscando equipos en la red…'; empty.hidden = false; }
+  else if (!state.devices.length) { empty.textContent = state.scanned ? 'No se encontraron equipos Ubiquiti en la red local.' : 'Pulsa «Buscar equipos».'; empty.hidden = false; }
+  else { empty.hidden = true; }
+
+  $('dv-count').textContent = state.devices.length ? `${state.devices.length} equipo(s)` : '';
+}
+
+function renderDevicesView() {
+  if ($('devices-view').hidden) return;
+  $('dv-scan').disabled = state.scanning;
+  $('dv-scan').textContent = state.scanning ? 'Buscando…' : 'Buscar equipos';
+  $('dv-status').disabled = state.fetchingStatus || !state.devices.length;
+  $('dv-status').textContent = state.fetchingStatus ? 'Consultando…' : 'Obtener señal/CCQ';
+  renderColToggles();
+  renderDevicesTable();
 }
 
 function renderDownload(d) {
@@ -289,7 +327,10 @@ $('star').onclick = () => browser.toggleBookmark();
 $('bookmarks-btn').onclick = () => openPanel('bookmarks');
 $('downloads-btn').onclick = () => openPanel('downloads');
 $('passwords-btn').onclick = () => openPanel('passwords');
-$('devices-btn').onclick = () => { const wasClosed = state.panel !== 'devices'; openPanel('devices'); if (wasClosed && state.panel === 'devices' && !state.scanning && !state.scanned) browser.scanDevices(); };
+$('devices-btn').onclick = () => openDevicesView();
+$('dv-close').onclick = () => closeDevicesView();
+$('dv-scan').onclick = () => browser.scanDevices();
+$('dv-status').onclick = () => browser.fetchDeviceStatus();
 $('pw-save').onclick = () => browser.passwordPrompt({ tabId: state.activeId, action: 'save' });
 $('pw-never').onclick = () => browser.passwordPrompt({ tabId: state.activeId, action: 'never' });
 $('pw-dismiss').onclick = () => browser.passwordPrompt({ tabId: state.activeId, action: 'dismiss' });
@@ -333,12 +374,23 @@ browser.on('passwords', (passwords) => {
 browser.on('scan-state', ({ scanning }) => {
   state.scanning = scanning;
   if (scanning) state.scanned = true;
-  if (state.panel === 'devices') renderPanel();
+  renderDevicesView();
 });
 
 browser.on('devices', (devices) => {
   state.devices = devices;
-  if (state.panel === 'devices') renderPanel();
+  renderDevicesView();
+});
+
+browser.on('status-state', ({ fetching }) => {
+  state.fetchingStatus = fetching;
+  renderDevicesView();
+});
+
+// Resultado de señal/CCQ de un equipo: se mezcla en su fila
+browser.on('device-status', ({ key, status }) => {
+  const d = state.devices.find(x => (x.mac || x.ip) === key);
+  if (d) { d.status = status; renderDevicesTable(); }
 });
 
 // ---------- Inicio de sesión HTTP (ventanita de usuario/contraseña del router) ----------
@@ -392,6 +444,7 @@ browser.on('downloads', (downloads) => {
 });
 
 browser.on('show-panel', (name) => {
+  if (name === 'devices') { openDevicesView(); return; }
   if (state.panel !== name) openPanel(name);
 });
 

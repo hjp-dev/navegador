@@ -328,3 +328,65 @@ progress {
 
 .scan-bar { width: 100%; }
 .scan-bar button { width: 100%; }
+
+/* ---------- Vista completa de antenas (tabla) ---------- */
+#devices-view {
+  position: fixed;
+  inset: var(--chrome-h, 76px) 0 0 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bar);
+  z-index: 5;
+}
+#devices-view[hidden] { display: none; }
+
+.dv-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.dv-header h2 { margin: 0; font-size: 16px; }
+.dv-spacer { flex: 1; }
+#dv-count { color: var(--muted); font-size: 12px; }
+
+#dv-cols { position: relative; }
+#dv-cols summary { cursor: pointer; list-style: none; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; }
+#dv-cols summary::-webkit-details-marker { display: none; }
+#dv-cols-list {
+  position: absolute;
+  top: 110%;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--bar);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  white-space: nowrap;
+}
+#dv-cols-list label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
+#dv-body { flex: 1; overflow: auto; }
+#dv-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+#dv-table th, #dv-table td {
+  text-align: left;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+#dv-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--tab);
+  font-weight: 600;
+  z-index: 1;
+}
+#dv-table tbody tr:hover { background: var(--tab-hover); }
+.dv-actions { display: flex; gap: 6px; }
+#dv-empty { padding: 24px; color: var(--muted); text-align: center; }

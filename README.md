@@ -37,6 +37,15 @@ está en modo router y reporta varias interfaces, muestra todas sus IPs (gestió
 con un botón para abrir cada una.
 Desde cada resultado puedes abrir su panel (http o https) o copiar su IP.
 
+Los resultados se muestran en una **tabla a pantalla completa** dentro del navegador, con columnas
+para Nombre, Modelo, IP de gestión/LAN, WAN/otras IPs, MAC, SSID, Modo, Señal, CCQ y Firmware.
+El botón **Columnas** permite ocultar las que no quieras ver (se recuerda tu elección).
+
+La **señal y el CCQ** no vienen en el escaneo (el protocolo de descubrimiento no los incluye):
+con el botón **Obtener señal/CCQ**, el navegador entra a cada equipo con las credenciales
+guardadas/predefinidas (su `status.cgi`) y completa esas columnas. Es una función experimental,
+probada contra un equipo simulado; en antenas reales puede variar según el firmware.
+
 Es muy útil en campo: encuentra la antena aunque tu PC esté en otra subred (por ejemplo, tu PC
 en `192.168.0.x` y la antena en `192.168.1.20`), así sabes qué IP configurar. Solo funciona en la
 misma red local (no atraviesa routers). La primera vez, el firewall de Windows puede pedir permiso
@@ -136,5 +145,6 @@ src/
   preload.js       Puente seguro entre la interfaz y el proceso principal
   page-preload.js  Se ejecuta en las páginas: detecta y rellena formularios de inicio de sesión
   ubnt-discovery.js Escaneo de equipos Ubiquiti en la red local (UDP 10001)
+  ubnt-status.js    Lee señal/CCQ de cada equipo (status.cgi de airOS)
   ui/            Interfaz (barra de pestañas, navegación y panel lateral)
 ```

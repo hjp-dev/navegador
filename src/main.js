@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const passwords = require('./passwords');
 const discovery = require('./ubnt-discovery');
+const status = require('./ubnt-status');
 
 const HOME_URL = 'https://www.google.com';
 const SEARCH_URL = 'https://www.google.com/search?q=';
@@ -482,6 +483,7 @@ ui.on('preset-add', (_e, preset) => {
 
 // ---------- Escaneo de antenas Ubiquiti ----------
 let scanning = false;
+let lastDevices = []; // último resultado del escaneo (para consultar señal/CCQ)
 
 ui.on('scan-devices', async () => {
   if (scanning) return;
@@ -491,9 +493,32 @@ ui.on('scan-devices', async () => {
   try {
     devices = await discovery.scan(3000);
   } catch {}
+  lastDevices = devices;
   scanning = false;
   send('scan-state', { scanning: false });
   send('devices', devices);
+});
+
+// Entra a cada equipo (con las credenciales guardadas/predefinidas) y trae señal, CCQ, etc.
+let fetchingStatus = false;
+
+ui.on('fetch-device-status', async () => {
+  if (fetchingStatus || !lastDevices.length) return;
+  fetchingStatus = true;
+  send('status-state', { fetching: true });
+  await Promise.all(lastDevices.map(async (d) => {
+    const ip = d.ip;
+    const creds = credentialsFor(`http://${ip}`)[0] || { username: 'ubnt', password: 'ubnt' };
+    let result;
+    try {
+      result = await status.fetchStatus(ip, creds, isPrivateHost);
+    } catch (e) {
+      result = { ok: false, error: String(e) };
+    }
+    send('device-status', { key: d.mac || d.ip, status: result });
+  }));
+  fetchingStatus = false;
+  send('status-state', { fetching: false });
 });
 
 // ---------- Certificados de equipos de la red interna ----------
