@@ -258,6 +258,9 @@ function createWindow() {
     win = null;
     tabs = [];
   });
+  // En pantalla completa se oculta toda la barra superior (lo maneja la interfaz)
+  win.on('enter-full-screen', () => { send('fullscreen', true); setTimeout(layout, 50); });
+  win.on('leave-full-screen', () => { send('fullscreen', false); setTimeout(layout, 50); });
 }
 
 function buildMenu() {
@@ -270,6 +273,10 @@ function buildMenu() {
         { label: 'Cerrar pestaña', accelerator: 'CmdOrCtrl+W', click: () => closeTab(activeId) },
         { label: 'Siguiente pestaña', accelerator: 'Ctrl+Tab', click: () => cycleTab(1) },
         { label: 'Pestaña anterior', accelerator: 'Ctrl+Shift+Tab', click: () => cycleTab(-1) },
+        { label: 'Siguiente pestaña (flecha)', accelerator: 'CmdOrCtrl+Shift+Right', click: () => cycleTab(1) },
+        { label: 'Pestaña anterior (flecha)', accelerator: 'CmdOrCtrl+Shift+Left', click: () => cycleTab(-1) },
+        { label: 'Siguiente pestaña', accelerator: 'Ctrl+PageDown', visible: false, click: () => cycleTab(1) },
+        { label: 'Pestaña anterior', accelerator: 'Ctrl+PageUp', visible: false, click: () => cycleTab(-1) },
         { type: 'separator' },
         { label: 'Atrás', accelerator: 'Alt+Left', click: () => wc()?.navigationHistory.goBack() },
         { label: 'Adelante', accelerator: 'Alt+Right', click: () => wc()?.navigationHistory.goForward() },
@@ -284,7 +291,7 @@ function buildMenu() {
         { label: 'Antenas Ubiquiti', accelerator: 'CmdOrCtrl+Shift+U', click: () => send('show-panel', 'devices') },
         { type: 'separator' },
         { label: 'Ocultar/mostrar barra de direcciones', accelerator: 'CmdOrCtrl+Shift+B', click: () => send('toggle-navbar') },
-        { role: 'togglefullscreen' }, // F11 en Windows/Linux
+        { label: 'Pantalla completa', accelerator: 'F11', click: () => { if (win) win.setFullScreen(!win.isFullScreen()); } },
         { type: 'separator' },
         { label: 'Herramientas de desarrollo', accelerator: 'F12', click: () => wc()?.toggleDevTools() },
         { role: 'quit', label: 'Salir' },

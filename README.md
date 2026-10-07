@@ -14,8 +14,13 @@ La página de inicio es propia del navegador (no Google): tiene un buscador (que
 botones «Buscar con Google» y «Voy a tener suerte», y accesos directos a Antenas, Favoritos,
 Descargas y Contraseñas. Si escribes una IP o dirección en ese buscador, la abre directamente.
 
-- **Pantalla completa:** F11.
+- **Pantalla completa:** F11 (oculta toda la barra superior; solo se ve el contenido).
 - **Ocultar/mostrar la barra de direcciones:** Ctrl+Shift+B.
+- **Cambiar de pestaña con flechas:** Ctrl+Shift+→ / Ctrl+Shift+← (también Ctrl+Tab).
+
+La barra de navegación quedó minimalista (atrás, adelante, recargar, dirección y la estrella de
+favoritos). El resto —Antenas, Favoritos, Descargas, Contraseñas— se abre desde la página de inicio
+o con sus atajos.
 
 Al abrir un equipo desde la vista **Antenas**, se abre en una pestaña nueva y la vista Antenas
 queda abierta en la pestaña anterior (vuelves a ella desde la barra de pestañas).

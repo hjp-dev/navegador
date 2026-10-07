@@ -62,7 +62,7 @@ function renderNavbar() {
 
   document.title = tab ? `${tab.title} - Navegador` : 'Navegador';
 
-  $('pw-badge').hidden = !tab?.savedLogins;
+  const pwBadge = $('pw-badge'); if (pwBadge) pwBadge.hidden = !tab?.savedLogins;
 
   // Aviso "¿Guardar contraseña?" de la pestaña activa
   const prompt = tab?.pwPrompt;
@@ -82,7 +82,7 @@ const originOf = (url) => { try { return new URL(url).origin; } catch { return n
 function openPanel(name) {
   state.panel = state.panel === name ? null : name;
   browser.setPanel(!!state.panel);
-  if (state.panel === 'downloads') $('dl-badge').hidden = true;
+  if (state.panel === 'downloads') { const b = $('dl-badge'); if (b) b.hidden = true; }
   renderPanel();
 }
 
@@ -386,13 +386,7 @@ $('forward').onclick = () => browser.forward();
 $('reload').onclick = () => browser.reload();
 $('new-tab').onclick = () => browser.newTab();
 $('star').onclick = () => browser.toggleBookmark();
-$('bookmarks-btn').onclick = () => openPanel('bookmarks');
-$('downloads-btn').onclick = () => openPanel('downloads');
-$('passwords-btn').onclick = () => openPanel('passwords');
-$('devices-btn').onclick = () => {
-  if (state.devicesOwner === state.activeId && !$('devices-view').hidden) closeDevicesView();
-  else openDevicesView();
-};
+// Favoritos, Descargas, Contraseñas y Antenas se abren desde la página de inicio o con atajos.
 $('dv-close').onclick = () => closeDevicesView();
 $('dv-scan').onclick = () => browser.scanDevices();
 $('dv-status').onclick = () => browser.fetchDeviceStatus();
@@ -441,6 +435,12 @@ browser.on('toggle-navbar', () => {
   navbarHidden = !navbarHidden;
   try { localStorage.setItem('navbar-hidden', navbarHidden ? '1' : '0'); } catch {}
   applyNavbar();
+});
+
+// Pantalla completa (F11): se oculta toda la barra superior para ver solo el contenido
+browser.on('fullscreen', (on) => {
+  $('chrome').style.display = on ? 'none' : '';
+  if (!on) applyNavbar();
 });
 
 browser.on('passwords', (passwords) => {
@@ -517,7 +517,7 @@ new ResizeObserver(() => {
 browser.on('downloads', (downloads) => {
   state.downloads = downloads;
   if (state.panel === 'downloads') renderPanel();
-  else if (downloads.some(d => d.state === 'progressing')) $('dl-badge').hidden = false;
+  else if (downloads.some(d => d.state === 'progressing')) { const b = $('dl-badge'); if (b) b.hidden = false; }
 });
 
 browser.on('show-panel', (name) => {
