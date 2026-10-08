@@ -1,6 +1,6 @@
 {
   "name": "navegador",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Navegador web minimalista basado en Chromium (Electron): pestañas, atrás/adelante, favoritos y descargas.",
   "main": "src/main.js",
   "scripts": {
@@ -31,6 +31,10 @@
         {
           "from": "build/linux/apparmor-profile",
           "to": "apparmor-profile"
+        },
+        {
+          "from": "build/wg-helper/linux/wg-helper",
+          "to": "wg-helper/wg-helper"
         }
       ],
       "icon": "build/icons"
@@ -39,7 +43,13 @@
       "target": [
         "nsis"
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "extraResources": [
+        {
+          "from": "build/wg-helper/win/wg-helper.exe",
+          "to": "wg-helper/wg-helper.exe"
+        }
+      ]
     },
     "mac": {
       "target": [

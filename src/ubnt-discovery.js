@@ -187,4 +187,4 @@ function scanRange(spec, timeout = 4000) {
   });
 }
 
-module.exports = { scan, scanRange, parseTargets };
+module.exports = { scan, scanRange, parseTargets, parseReply };

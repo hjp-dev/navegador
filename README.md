@@ -110,6 +110,40 @@ que se rellenan solas en los equipos de la red interna, sin tener que guardarlas
   `192.168.1.20` y `192.168.172.1` (LiteBeam M5, LiteBeam 5AC Gen2, etc.). Puedes editarla o
   añadir la credencial propia de tu empresa para todas las antenas ya instaladas.
 
+## Túnel VPN (WireGuard) — solo para el navegador
+
+Permite llegar a antenas y equipos que están **detrás de un MikroTik o servidor**, levantando un
+túnel **WireGuard** que afecta **solo al navegador**, no a la PC. No necesita permisos de
+administrador ni instalar drivers: el túnel corre en espacio de usuario dentro de un proceso
+auxiliar (`wg-helper`) que se incluye en los instaladores. Al desconectar, el túnel desaparece.
+
+Está pensado para técnicos: se abre desde la página de inicio (🔒 **Túnel VPN**) o el menú **⋮**.
+
+**Cómo se usa:**
+
+1. **Nuevo** perfil y ponle un nombre (p. ej. «MikroTik oficina»). Al guardar, el navegador
+   **genera el par de claves** y muestra la **clave pública**.
+2. **Copia esa clave pública** y pégala en el peer del MikroTik/servidor (como un cliente más).
+3. Completa los datos que te da el servidor:
+   - **Dirección del cliente en el túnel** (la IP que te asignan, p. ej. `10.9.0.2/32`).
+   - **Endpoint**: `host:puerto` del MikroTik/servidor (p. ej. `mi.servidor.com:13231`).
+   - **Clave pública del peer** (la del MikroTik).
+   - **Redes permitidas (AllowedIPs)**: las subredes de tus antenas que quieres alcanzar
+     (p. ej. `10.0.0.0/8, 192.168.0.0/16`).
+   - Opcionales: DNS, *preshared key*, *keepalive*.
+4. **Conectar**. El indicador pasa a verde cuando el *handshake* se completa.
+
+Mientras está conectado, el tráfico del navegador hacia esas redes sale por el túnel (el resto de
+la PC no se ve afectado). Para **detectar antenas a través del túnel**, abre **Antenas → Escanear
+subred** y escribe la subred remota (p. ej. `10.0.0.0/24`): el barrido se hace **por dentro del
+túnel** (unicast, equipo por equipo, porque el *broadcast* no cruza un VPN). Al dar clic en una IP
+se abre el equipo en una pestaña nueva, igual que en la red local.
+
+> **Experimental.** WireGuard es el primer túnel soportado. OpenVPN y PPTP (de MikroTik/Windows)
+> quedan para una etapa siguiente; el PPTP irá detrás de una advertencia «acepto el riesgo» por ser
+> inseguro. Las claves privadas se guardan cifradas con el llavero del sistema (igual que las
+> contraseñas).
+
 ## Uso
 
 Necesitas [Node.js](https://nodejs.org/) 18 o superior.
@@ -162,6 +196,16 @@ posteriores necesita `sudo apt install libfuse2` (en 24.04: `libfuse2t64`).
 npm run dist   # genera un instalador en dist/ (AppImage, .exe o .dmg según tu sistema)
 ```
 
+El cliente VPN usa un ayudante en Go (`wg-helper/`). Los instaladores de GitHub ya lo compilan e
+incluyen. Para probarlo con `npm start` desde el código, compílalo primero (necesitas
+[Go](https://go.dev/) 1.23+):
+
+```bash
+cd wg-helper && go build -o ../build/wg-helper/linux/wg-helper .   # en Windows: ...\win\wg-helper.exe
+```
+
+(También puedes apuntar el navegador a un binario concreto con la variable de entorno `WG_HELPER`.)
+
 ## Atajos de teclado
 
 | Acción | Atajo |
@@ -190,5 +234,7 @@ src/
   page-preload.js  Se ejecuta en las páginas: detecta y rellena formularios de inicio de sesión
   ubnt-discovery.js Escaneo de equipos Ubiquiti en la red local (UDP 10001)
   ubnt-status.js    Lee señal/CCQ de cada equipo (status.cgi de airOS)
+  vpn.js            Cliente VPN WireGuard (perfiles cifrados y manejo del túnel)
   ui/            Interfaz (barra de pestañas, navegación y panel lateral)
+wg-helper/       Ayudante del túnel WireGuard en Go (userspace: SOCKS5 + descubrimiento)
 ```

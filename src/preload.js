@@ -30,8 +30,12 @@ contextBridge.exposeInMainWorld('browser', {
   openDevice: send('open-device'),
   tabOverview: send('tab-overview'),
   toggleFullscreen: send('toggle-fullscreen'),
+  vpnSave: send('vpn-save'),
+  vpnRemove: send('vpn-remove'),
+  vpnConnect: send('vpn-connect'),
+  vpnDisconnect: send('vpn-disconnect'),
   on: (channel, callback) => {
-    const allowed = ['tabs', 'downloads', 'passwords', 'show-panel', 'focus-address', 'auth-request', 'devices', 'scan-state', 'device-status', 'status-state', 'toggle-navbar', 'fullscreen', 'tab-overview'];
+    const allowed = ['tabs', 'downloads', 'passwords', 'show-panel', 'focus-address', 'auth-request', 'devices', 'scan-state', 'device-status', 'status-state', 'toggle-navbar', 'fullscreen', 'tab-overview', 'vpn'];
     if (allowed.includes(channel)) ipcRenderer.on(channel, (_e, data) => callback(data));
   },
 });
