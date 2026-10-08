@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 
-const state = { tabs: [], activeId: null, bookmarks: [], downloads: [], passwords: { entries: [], presets: [] }, devices: [], scanning: false, scanned: false, fetchingStatus: false, devicesOwner: null, panel: null, vpn: { profiles: [], state: { status: 'idle' }, available: false }, vpnSelected: null, vpnPending: null };
+const state = { tabs: [], activeId: null, bookmarks: [], downloads: [], passwords: { entries: [], presets: [] }, devices: [], scanning: false, scanned: false, fetchingStatus: false, devicesOwner: null, panel: null };
 
 const address = $('address');
 let editingAddress = false;
@@ -381,155 +381,6 @@ function renderDownload(d) {
   );
 }
 
-// ---------- Vista Túnel VPN (WireGuard) ----------
-function openVpnView() {
-  if (!$('devices-view').hidden) closeDevicesView();
-  $('vpn-view').hidden = false;
-  browser.setModal(true);
-  if (state.vpnSelected == null && state.vpn.profiles.length) state.vpnSelected = state.vpn.profiles[0].id;
-  state.vpnRefill = true;
-  renderVpn();
-}
-function closeVpnView() {
-  $('vpn-view').hidden = true;
-  if (state.devicesOwner != null) syncDevicesView();
-  else browser.setModal(false);
-}
-
-const vpnField = {
-  id: () => $('vpn-id'), name: () => $('vpn-name'), pubkey: () => $('vpn-pubkey'),
-  address: () => $('vpn-address'), endpoint: () => $('vpn-endpoint'), peerpub: () => $('vpn-peerpub'),
-  allowed: () => $('vpn-allowed'), dns: () => $('vpn-dns'), psk: () => $('vpn-psk'), keepalive: () => $('vpn-keepalive'),
-};
-
-function vpnFillForm(p) {
-  p = p || {};
-  vpnField.id().value = p.id || '';
-  vpnField.name().value = p.name || '';
-  vpnField.pubkey().value = p.publicKey || '';
-  vpnField.address().value = p.address || '';
-  vpnField.endpoint().value = p.endpoint || '';
-  vpnField.peerpub().value = p.peerPublicKey || '';
-  vpnField.allowed().value = p.allowedIPs || '';
-  vpnField.dns().value = p.dns || '';
-  vpnField.keepalive().value = p.keepalive || '';
-  vpnField.psk().value = ''; // nunca se muestra; vacío = no cambiar
-  vpnField.psk().placeholder = p.hasPreshared ? '•••••• (guardada; escribe para cambiar)' : 'dejar vacío si no se usa';
-}
-
-function vpnReadForm() {
-  return {
-    id: vpnField.id().value || undefined,
-    name: vpnField.name().value,
-    address: vpnField.address().value,
-    endpoint: vpnField.endpoint().value,
-    peerPublicKey: vpnField.peerpub().value,
-    allowedIPs: vpnField.allowed().value,
-    dns: vpnField.dns().value,
-    keepalive: vpnField.keepalive().value,
-    presharedKey: vpnField.psk().value,
-  };
-}
-
-function renderVpnList() {
-  const ul = $('vpn-list');
-  const st = state.vpn.state || {};
-  ul.replaceChildren(...state.vpn.profiles.map(p => {
-    const connected = st.status === 'connected' && st.profileId === p.id;
-    const li = el('li', { className: 'vpn-item' + (p.id === state.vpnSelected ? ' sel' : '') + (connected ? ' on' : '') },
-      el('span', { className: 'vpn-dot' }),
-      el('span', { className: 'vpn-item-name', textContent: p.name || '(sin nombre)' }),
-    );
-    li.onclick = () => { state.vpnSelected = p.id; state.vpnRefill = true; renderVpn(); };
-    return li;
-  }));
-  if (!state.vpn.profiles.length) ul.append(el('li', { className: 'vpn-empty', textContent: 'Sin perfiles. Pulsa «Nuevo».' }));
-}
-
-function renderVpnStatus() {
-  const st = state.vpn.state || {};
-  const ind = $('vpn-indicator');
-  const txt = $('vpn-status-text');
-  const map = {
-    idle: ['#9aa0a6', 'Desconectado'],
-    connecting: ['#f9ab00', 'Conectando…'],
-    connected: ['#1e8e3e', 'Conectado'],
-    error: ['#d93025', 'Error'],
-  };
-  const [color, label] = map[st.status] || map.idle;
-  ind.style.color = color;
-  let extra = '';
-  if (st.status === 'connected') {
-    extra = st.handshake ? ` · handshake ok` : ' · negociando…';
-  }
-  const prof = state.vpn.profiles.find(p => p.id === st.profileId);
-  txt.textContent = label + (prof && st.status !== 'idle' ? ` (${prof.name})` : '') + extra;
-}
-
-function renderVpn() {
-  if ($('vpn-view').hidden) return;
-  $('vpn-unavailable').hidden = !!state.vpn.available;
-  const st = state.vpn.state || {};
-  renderVpnList();
-  renderVpnStatus();
-
-  // Rellenar el formulario SOLO al cambiar de perfil o tras guardar/regenerar (el sondeo de
-  // estado llega cada pocos segundos y no debe pisar lo que el usuario está escribiendo).
-  const sel = state.vpn.profiles.find(p => p.id === state.vpnSelected);
-  if (state.vpnRefill) {
-    if (sel) vpnFillForm(sel);
-    else vpnFillForm({});
-    state.vpnFilledId = state.vpnSelected;
-    state.vpnRefill = false;
-  }
-
-  const isSaved = !!sel;
-  const isThis = st.profileId === state.vpnSelected;
-  const connected = st.status === 'connected' && isThis;
-  const connecting = st.status === 'connecting' && isThis;
-
-  $('vpn-connect').hidden = connected;
-  $('vpn-connect').disabled = !isSaved || !state.vpn.available || connecting;
-  $('vpn-connect').textContent = connecting ? 'Conectando…' : 'Conectar';
-  $('vpn-disconnect').hidden = !(connected || connecting);
-  $('vpn-delete').hidden = !isSaved;
-
-  const err = $('vpn-error');
-  if (st.status === 'error' && (isThis || st.profileId == null)) { err.hidden = false; err.textContent = st.error || 'Error al conectar.'; }
-  else err.hidden = true;
-}
-
-$('vpn-close').onclick = () => closeVpnView();
-$('vpn-new').onclick = () => { state.vpnSelected = null; state.vpnRefill = true; renderVpn(); vpnField.name().focus(); };
-$('vpn-form').onsubmit = (e) => {
-  e.preventDefault();
-  state.vpnPending = vpnField.id().value || '__new__';
-  browser.vpnSave(vpnReadForm());
-};
-$('vpn-regen').onclick = () => {
-  if (vpnField.id().value && !confirm('¿Regenerar las claves? Tendrás que volver a pegar la nueva clave pública en el servidor.')) return;
-  state.vpnPending = vpnField.id().value || '__new__';
-  browser.vpnSave({ ...vpnReadForm(), regenerate: true });
-};
-$('vpn-copy-pub').onclick = () => { if (vpnField.pubkey().value) navigator.clipboard?.writeText(vpnField.pubkey().value); };
-$('vpn-connect').onclick = () => { if (state.vpnSelected) browser.vpnConnect(state.vpnSelected); };
-$('vpn-disconnect').onclick = () => browser.vpnDisconnect();
-$('vpn-delete').onclick = () => {
-  const sel = state.vpn.profiles.find(p => p.id === state.vpnSelected);
-  if (sel && confirm(`¿Eliminar el perfil «${sel.name}»?`)) { browser.vpnRemove(sel.id); state.vpnSelected = null; }
-};
-
-browser.on('vpn', (data) => {
-  state.vpn = { profiles: [], state: { status: 'idle' }, available: false, ...data };
-  if (state.vpnPending) {
-    if (state.vpnPending === '__new__') state.vpnSelected = state.vpn.profiles.length ? state.vpn.profiles[state.vpn.profiles.length - 1].id : null;
-    else state.vpnSelected = state.vpnPending;
-    state.vpnPending = null;
-    state.vpnRefill = true; // mostrar la clave pública recién generada
-  }
-  renderVpn();
-});
-
 // ---------- Eventos de la interfaz ----------
 $('back').onclick = () => browser.back();
 $('forward').onclick = () => browser.forward();
@@ -558,7 +409,6 @@ $('app-menu').addEventListener('click', (e) => {
     case 'favoritos': openPanel('bookmarks'); break;
     case 'descargas': openPanel('downloads'); break;
     case 'contrasenas': openPanel('passwords'); break;
-    case 'vpn': openVpnView(); break;
     case 'fullscreen': browser.toggleFullscreen(); break;
     case 'navbar': navbarHidden = !navbarHidden; try { localStorage.setItem('navbar-hidden', navbarHidden ? '1' : '0'); } catch {} applyNavbar(); break;
   }
@@ -593,7 +443,6 @@ browser.on('tab-overview', ({ tabs, activeId }) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !$('tab-overview').hidden) closeTabOverview();
-  else if (e.key === 'Escape' && !$('vpn-view').hidden) closeVpnView();
 });
 $('dv-scan').onclick = () => browser.scanDevices();
 $('dv-status').onclick = () => browser.fetchDeviceStatus();
@@ -738,7 +587,6 @@ browser.on('downloads', (downloads) => {
 
 browser.on('show-panel', (name) => {
   if (name === 'devices') { openDevicesView(); return; }
-  if (name === 'vpn') { openVpnView(); return; }
   if (state.panel !== name) openPanel(name);
 });
 

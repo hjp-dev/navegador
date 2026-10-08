@@ -5,7 +5,6 @@ const fs = require('fs');
 const passwords = require('./passwords');
 const discovery = require('./ubnt-discovery');
 const status = require('./ubnt-status');
-const vpn = require('./vpn');
 
 // Página de inicio propia del navegador (no Google)
 const HOME_URL = pathToFileURL(path.join(__dirname, 'ui', 'home.html')).href;
@@ -188,7 +187,7 @@ function createTab(url = HOME_URL, activate = true, opts = {}) {
 }
 
 function handleHomeCommand(cmd) {
-  const panel = { antenas: 'devices', favoritos: 'bookmarks', descargas: 'downloads', contrasenas: 'passwords', vpn: 'vpn' }[cmd];
+  const panel = { antenas: 'devices', favoritos: 'bookmarks', descargas: 'downloads', contrasenas: 'passwords' }[cmd];
   if (panel) send('show-panel', panel);
 }
 
@@ -279,7 +278,6 @@ function createWindow() {
     createTab(arg ? normalizeInput(arg) : HOME_URL);
     sendDownloads();
     sendPasswords();
-    sendVpn();
   });
   win.on('closed', () => {
     win = null;
@@ -573,16 +571,8 @@ async function runScan(fn) {
 }
 
 ui.on('scan-devices', () => runScan(() => discovery.scan(3000)));
-// Barrido por subred/rango (unicast): sirve con broadcast filtrado y a través de túnel VPN.
-// Si el túnel WireGuard está conectado, el sondeo se hace por el túnel (el ayudante manda la
-// consulta UDP desde dentro del túnel); si no, se hace directo desde esta PC.
-ui.on('scan-range', (_e, spec) => runScan(() => {
-  const text = String(spec || '');
-  if (vpn.getState().status === 'connected') {
-    return vpn.discover(discovery.parseTargets(text), discovery.parseReply);
-  }
-  return discovery.scanRange(text, 5000);
-}));
+// Barrido por subred/rango (unicast): sirve con broadcast filtrado y a través de túnel VPN
+ui.on('scan-range', (_e, spec) => runScan(() => discovery.scanRange(String(spec || ''), 5000)));
 
 // Todas las credenciales conocidas para un equipo (guardadas http/https + predefinidas), sin repetir.
 function credsForDevice(ip) {
@@ -618,38 +608,6 @@ async function fetchAllStatus() {
 }
 
 ui.on('fetch-device-status', () => fetchAllStatus());
-
-// ---------- Cliente VPN WireGuard (solo para el navegador) ----------
-let vpnProxyOn = false;
-
-function applyVpnProxy(on) {
-  // El túnel afecta solo al navegador: se enruta su tráfico (y las consultas de señal) por el
-  // proxy SOCKS5 del ayudante. localhost queda excluido (lo bypassa Chromium), así el control
-  // del ayudante y la interfaz siguen siendo directos.
-  if (on === vpnProxyOn) return;
-  vpnProxyOn = on;
-  const cfg = on ? { proxyRules: `socks5://127.0.0.1:${vpn.SOCKS_PORT}` } : { mode: 'direct' };
-  session.defaultSession.setProxy(cfg);
-  status.setProxy(on ? cfg : null);
-}
-
-function sendVpn() {
-  const state = vpn.getState();
-  applyVpnProxy(state.status === 'connected');
-  send('vpn', { profiles: vpn.listProfiles(), state, available: vpn.helperAvailable() });
-}
-
-vpn.init(sendVpn);
-
-ui.on('vpn-save', (_e, profile) => { vpn.saveProfile(profile || {}); sendVpn(); });
-ui.on('vpn-remove', (_e, id) => {
-  const state = vpn.getState();
-  if (state.profileId === id && state.status !== 'idle') vpn.disconnect();
-  vpn.removeProfile(id);
-  sendVpn();
-});
-ui.on('vpn-connect', (_e, id) => vpn.connect(id));
-ui.on('vpn-disconnect', () => vpn.disconnect());
 
 // ---------- Certificados de equipos de la red interna ----------
 // Routers, ONUs y antenas (p. ej. LiteBeam 5AC Gen2) sirven su panel por https con un
@@ -726,7 +684,6 @@ ui.on('auth-response', (_e, { id, username, password, remember }) => {
 app.whenReady().then(() => {
   bookmarks = loadBookmarks();
   passwords.load();
-  vpn.load();
   buildMenu();
   setupDownloads();
   createWindow();
@@ -735,8 +692,6 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
-
-app.on('before-quit', () => { try { vpn.disconnect(); } catch {} });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

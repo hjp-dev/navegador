@@ -11,7 +11,6 @@
 const { net, session } = require('electron');
 
 let statusSession = null;
-let pendingProxy = null; // proxy a aplicar (túnel VPN); se recuerda hasta crear la sesión
 
 // Sesión aislada con aceptación del certificado propio SOLO en red interna (igual que el navegador).
 function getSession(isPrivateHost) {
@@ -20,14 +19,7 @@ function getSession(isPrivateHost) {
   statusSession.setCertificateVerifyProc((req, callback) => {
     callback(isPrivateHost(req.hostname) ? 0 : -3); // 0 = confiar; -3 = verificación normal de Chromium
   });
-  if (pendingProxy) statusSession.setProxy(pendingProxy);
   return statusSession;
-}
-
-// Enruta las consultas de estado por el túnel VPN (o vuelve a conexión directa con null/{}).
-function setProxy(config) {
-  pendingProxy = config || null;
-  if (statusSession) statusSession.setProxy(config || { mode: 'direct' });
 }
 
 function httpRequest(ses, method, url, body) {
@@ -176,4 +168,4 @@ function tryParse(body, scheme) {
   try { return parseStatus(body, scheme); } catch { return null; }
 }
 
-module.exports = { fetchStatus, setProxy };
+module.exports = { fetchStatus };

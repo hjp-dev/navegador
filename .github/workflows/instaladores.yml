@@ -25,18 +25,6 @@ jobs:
           node-version: 22
           cache: npm
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-
-      # Compila el ayudante del túnel WireGuard (wg-helper) que se incluye en el instalador.
-      - name: Compilar wg-helper (Windows)
-        shell: bash
-        run: |
-          mkdir -p build/wg-helper/win
-          cd wg-helper
-          go build -trimpath -ldflags "-s -w" -o ../build/wg-helper/win/wg-helper.exe .
-
       - run: npm ci
 
       - run: npx electron-builder --win nsis --x64 --publish never
@@ -63,17 +51,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-
-      # Compila el ayudante del túnel WireGuard (wg-helper) que se incluye en el paquete.
-      - name: Compilar wg-helper (Linux)
-        run: |
-          mkdir -p build/wg-helper/linux
-          cd wg-helper
-          go build -trimpath -ldflags "-s -w" -o ../build/wg-helper/linux/wg-helper .
 
       - run: npm ci
 

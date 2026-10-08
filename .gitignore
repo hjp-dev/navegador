@@ -1,6 +1,3 @@
 node_modules/
 dist/
 dist-old/
-
-# Binarios compilados del ayudante del túnel (se generan en CI)
-build/wg-helper/

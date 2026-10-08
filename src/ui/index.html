@@ -31,7 +31,6 @@
     <button data-act="favoritos">★ Favoritos <span class="sc">Ctrl+Shift+O</span></button>
     <button data-act="descargas">⤓ Descargas <span class="sc">Ctrl+J</span></button>
     <button data-act="contrasenas">🔑 Contraseñas <span class="sc">Ctrl+Shift+P</span></button>
-    <button data-act="vpn">🔒 Túnel VPN</button>
     <div class="sep"></div>
     <button data-act="fullscreen">⛶ Pantalla completa <span class="sc">F11</span></button>
     <button data-act="navbar">▭ Ocultar/mostrar barra <span class="sc">Ctrl+Shift+B</span></button>
@@ -86,72 +85,6 @@
         <tbody id="dv-rows"></tbody>
       </table>
       <p id="dv-empty" hidden></p>
-    </div>
-  </div>
-
-  <div id="vpn-view" hidden>
-    <div class="dv-header">
-      <h2>Túnel VPN <span class="vpn-exp">WireGuard · experimental</span></h2>
-      <span id="vpn-indicator" class="vpn-ind">●</span>
-      <span id="vpn-status-text"></span>
-      <span class="dv-spacer"></span>
-      <button id="vpn-close" class="icon" title="Cerrar">✕</button>
-    </div>
-    <div id="vpn-body">
-      <p id="vpn-unavailable" class="vpn-note" hidden>
-        El componente del túnel no está disponible en esta versión. Se incluye en los instaladores
-        de Windows y Ubuntu.
-      </p>
-      <div id="vpn-layout">
-        <aside id="vpn-list-col">
-          <div class="vpn-list-head">
-            <h3>Perfiles</h3>
-            <button id="vpn-new" class="text">＋ Nuevo</button>
-          </div>
-          <ul id="vpn-list"></ul>
-        </aside>
-        <section id="vpn-form-col">
-          <form id="vpn-form">
-            <input type="hidden" id="vpn-id">
-            <label>Nombre <input id="vpn-name" type="text" spellcheck="false" placeholder="MikroTik oficina"></label>
-
-            <div class="vpn-keys">
-              <label>Clave pública (pegar en el MikroTik/servidor)
-                <span class="vpn-pub-row">
-                  <input id="vpn-pubkey" type="text" readonly placeholder="Se genera al crear el perfil">
-                  <button id="vpn-copy-pub" type="button" class="text" title="Copiar">Copiar</button>
-                  <button id="vpn-regen" type="button" class="text" title="Generar un par de claves nuevo">Regenerar</button>
-                </span>
-              </label>
-            </div>
-
-            <label>Dirección del cliente en el túnel <input id="vpn-address" type="text" spellcheck="false" placeholder="10.9.0.2/32"></label>
-            <label>Endpoint (host:puerto del servidor) <input id="vpn-endpoint" type="text" spellcheck="false" placeholder="mi.servidor.com:13231"></label>
-            <label>Clave pública del peer (servidor) <input id="vpn-peerpub" type="text" spellcheck="false" placeholder="clave del MikroTik"></label>
-            <label>Redes permitidas (AllowedIPs)
-              <input id="vpn-allowed" type="text" spellcheck="false" placeholder="10.0.0.0/8, 192.168.0.0/16">
-            </label>
-            <label>DNS (opcional) <input id="vpn-dns" type="text" spellcheck="false" placeholder="1.1.1.1"></label>
-            <div class="vpn-two">
-              <label>Preshared key (opcional) <input id="vpn-psk" type="text" spellcheck="false" placeholder="dejar vacío si no se usa"></label>
-              <label>Keepalive (s) <input id="vpn-keepalive" type="number" min="0" placeholder="25"></label>
-            </div>
-            <p class="vpn-help">
-              Las <b>Redes permitidas</b> son las subredes de tus antenas/equipos que quieres alcanzar
-              por el túnel (p. ej. <code>10.0.0.0/8</code>). Mientras el túnel está conectado, el tráfico
-              del navegador hacia esas redes sale por él. Para barrer y detectar antenas, abre
-              <b>Antenas → Escanear subred</b> con la subred remota.
-            </p>
-            <div class="vpn-actions">
-              <button type="submit" class="primary">Guardar</button>
-              <button id="vpn-connect" type="button" class="primary">Conectar</button>
-              <button id="vpn-disconnect" type="button" class="text" hidden>Desconectar</button>
-              <button id="vpn-delete" type="button" class="text danger" hidden>Eliminar</button>
-            </div>
-            <p id="vpn-error" class="vpn-err" hidden></p>
-          </form>
-        </section>
-      </div>
     </div>
   </div>
 
