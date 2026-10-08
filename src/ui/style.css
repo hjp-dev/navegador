@@ -467,3 +467,9 @@ progress {
 .to-bar .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
 .to-bar .x { width: 22px; height: 22px; border: none; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; }
 .to-bar .x:hover { background: var(--tab-hover); color: var(--text); }
+
+#dv-range {
+  width: 170px; padding: 6px 10px;
+  border: 1px solid var(--border); border-radius: 4px;
+  background: var(--input); color: var(--text); font: inherit;
+}

@@ -1,6 +1,6 @@
 {
   "name": "navegador",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "Navegador web minimalista basado en Chromium (Electron): pestañas, atrás/adelante, favoritos y descargas.",
   "main": "src/main.js",
   "scripts": {

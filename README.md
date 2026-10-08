@@ -86,7 +86,12 @@ panel 🔑 → **Predefinidas**, dejando el campo de IPs **vacío** (= cualquier
 Puedes cargar varias (p. ej. la vieja y la nueva contraseña); se prueban todas.
 
 Es muy útil en campo: encuentra la antena aunque tu PC esté en otra subred (por ejemplo, tu PC
-en `192.168.0.x` y la antena en `192.168.1.20`), así sabes qué IP configurar. Solo funciona en la
+en `192.168.0.x` y la antena en `192.168.1.20`), así sabes qué IP configurar.
+
+**Escanear una subred/rango (unicast):** además del botón *Buscar equipos* (broadcast), hay un campo
+para escribir una subred (p. ej. `10.0.0.0/24`) o un rango (`10.0.0.1-254`) y el botón *Escanear
+subred*. Envía la consulta IP por IP, por lo que funciona donde el broadcast está filtrado y, sobre
+todo, **a través de un túnel VPN** (el broadcast no cruza un VPN, el unicast sí). Solo funciona en la
 misma red local (no atraviesa routers). La primera vez, el firewall de Windows puede pedir permiso
 de acceso a la red.
 

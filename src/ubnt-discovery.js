@@ -124,4 +124,67 @@ function scan(timeout = 3000) {
   });
 }
 
-module.exports = { scan };
+// ---------- Barrido por subred/rango (unicast) ----------
+// Útil cuando el broadcast no sirve: redes con broadcast filtrado o, sobre todo, a través de un
+// túnel VPN (WireGuard) donde el broadcast no cruza pero el unicast sí.
+const ipToInt = (ip) => ip.split('.').reduce((n, p) => (n << 8) + (Number(p) & 255), 0) >>> 0;
+const intToIp = (n) => [24, 16, 8, 0].map((s) => (n >>> s) & 255).join('.');
+
+// Acepta "10.0.0.0/24", "10.0.0.1-10.0.0.254", "10.0.0.1-254" o una IP suelta.
+// Devuelve la lista de IPs a sondear (acotada para no barrer rangos enormes).
+function parseTargets(spec, maxHosts = 4096) {
+  spec = String(spec || '').trim();
+  const out = [];
+  const push = (a, b) => { for (let n = a; n <= b && out.length < maxHosts; n++) out.push(intToIp(n)); };
+
+  let m;
+  if ((m = spec.match(/^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/))) {
+    const base = ipToInt(m[1]); const bits = Math.min(32, Math.max(0, Number(m[2])));
+    const size = bits >= 31 ? (bits === 32 ? 1 : 2) : (2 ** (32 - bits));
+    const net = (base & (bits === 0 ? 0 : (~0 << (32 - bits)))) >>> 0;
+    const first = size <= 2 ? net : net + 1;         // se omiten red y broadcast en /24 y menores
+    const last = size <= 2 ? net + size - 1 : net + size - 2;
+    push(first, last);
+  } else if ((m = spec.match(/^(\d{1,3}(?:\.\d{1,3}){3})\s*-\s*(\d{1,3}(?:\.\d{1,3}){3})$/))) {
+    push(ipToInt(m[1]), ipToInt(m[2]));
+  } else if ((m = spec.match(/^(\d{1,3}(?:\.\d{1,3}){3})\s*-\s*(\d{1,3})$/))) {
+    const a = ipToInt(m[1]); push(a, (((a & 0xffffff00) >>> 0) + (Number(m[2]) & 255)) >>> 0);
+  } else if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(spec)) {
+    out.push(spec);
+  }
+  return out;
+}
+
+// Barre un rango enviando la consulta a cada IP (unicast). Devuelve los equipos que respondan.
+function scanRange(spec, timeout = 4000) {
+  const targets = parseTargets(spec);
+  return new Promise((resolve, reject) => {
+    if (!targets.length) { reject(new Error('rango no válido')); return; }
+    const found = new Map();
+    const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+    let done = false;
+    const finish = () => { if (done) return; done = true; try { socket.close(); } catch {} resolve([...found.values()]); };
+    socket.on('error', finish);
+    socket.on('message', (msg, rinfo) => {
+      const d = parseReply(msg, rinfo.address);
+      if (!d) return;
+      const key = d.mac || d.ip;
+      const prev = found.get(key);
+      if (prev) { for (const ip of d.ips) if (!prev.ips.includes(ip)) prev.ips.push(ip); }
+      else found.set(key, d);
+    });
+    socket.bind(() => {
+      // Se envían en tandas para no saturar
+      let i = 0;
+      const batch = () => {
+        if (done) return;
+        for (let n = 0; n < 256 && i < targets.length; n++, i++) socket.send(PROBE, PORT, targets[i], () => {});
+        if (i < targets.length) setTimeout(batch, 40);
+      };
+      batch();
+      setTimeout(finish, timeout);
+    });
+  });
+}
+
+module.exports = { scan, scanRange, parseTargets };

@@ -333,6 +333,7 @@ function renderDevicesView() {
   if ($('devices-view').hidden) return;
   $('dv-scan').disabled = state.scanning;
   $('dv-scan').textContent = state.scanning ? 'Buscando…' : 'Buscar equipos';
+  $('dv-scan-range').disabled = state.scanning;
   $('dv-status').disabled = state.fetchingStatus || !state.devices.length;
   $('dv-status').textContent = state.fetchingStatus ? 'Consultando…' : 'Obtener señal/CCQ';
   renderColToggles();
@@ -445,6 +446,15 @@ document.addEventListener('keydown', (e) => {
 });
 $('dv-scan').onclick = () => browser.scanDevices();
 $('dv-status').onclick = () => browser.fetchDeviceStatus();
+try { $('dv-range').value = localStorage.getItem('dv-range') || ''; } catch {}
+function doScanRange() {
+  const spec = $('dv-range').value.trim();
+  if (!spec) { $('dv-range').focus(); return; }
+  try { localStorage.setItem('dv-range', spec); } catch {}
+  browser.scanRange(spec);
+}
+$('dv-scan-range').onclick = doScanRange;
+$('dv-range').onkeydown = (e) => { if (e.key === 'Enter') doScanRange(); };
 $('pw-save').onclick = () => browser.passwordPrompt({ tabId: state.activeId, action: 'save' });
 $('pw-never').onclick = () => browser.passwordPrompt({ tabId: state.activeId, action: 'never' });
 $('pw-dismiss').onclick = () => browser.passwordPrompt({ tabId: state.activeId, action: 'dismiss' });

@@ -556,21 +556,23 @@ ui.on('preset-add', (_e, preset) => {
 let scanning = false;
 let lastDevices = []; // último resultado del escaneo (para consultar señal/CCQ)
 
-ui.on('scan-devices', async () => {
+async function runScan(fn) {
   if (scanning) return;
   scanning = true;
   send('scan-state', { scanning: true });
   let devices = [];
-  try {
-    devices = await discovery.scan(3000);
-  } catch {}
+  try { devices = await fn(); } catch {}
   lastDevices = devices;
   scanning = false;
   send('scan-state', { scanning: false });
   send('devices', devices);
   // Login automático para toda la red: al terminar el escaneo se consulta el estado solo
   if (devices.length) fetchAllStatus();
-});
+}
+
+ui.on('scan-devices', () => runScan(() => discovery.scan(3000)));
+// Barrido por subred/rango (unicast): sirve con broadcast filtrado y a través de túnel VPN
+ui.on('scan-range', (_e, spec) => runScan(() => discovery.scanRange(String(spec || ''), 5000)));
 
 // Todas las credenciales conocidas para un equipo (guardadas http/https + predefinidas), sin repetir.
 function credsForDevice(ip) {

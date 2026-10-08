@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('browser', {
   addPreset: send('preset-add'),
   authResponse: send('auth-response'),
   scanDevices: send('scan-devices'),
+  scanRange: send('scan-range'),
   fetchDeviceStatus: send('fetch-device-status'),
   openDevice: send('open-device'),
   tabOverview: send('tab-overview'),
