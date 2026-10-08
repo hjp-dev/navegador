@@ -397,29 +397,15 @@ function closeVpnView() {
 }
 
 const vpnField = {
-  id: () => $('vpn-id'), protocol: () => $('vpn-protocol'), name: () => $('vpn-name'), pubkey: () => $('vpn-pubkey'),
+  id: () => $('vpn-id'), name: () => $('vpn-name'), pubkey: () => $('vpn-pubkey'),
   address: () => $('vpn-address'), endpoint: () => $('vpn-endpoint'), peerpub: () => $('vpn-peerpub'),
   allowed: () => $('vpn-allowed'), dns: () => $('vpn-dns'), psk: () => $('vpn-psk'), keepalive: () => $('vpn-keepalive'),
-  ovpn: () => $('vpn-ovpn'), ovUser: () => $('vpn-ov-user'), ovPass: () => $('vpn-ov-pass'),
-  pptpGw: () => $('vpn-pptp-gw'), pptpUser: () => $('vpn-pptp-user'), pptpPass: () => $('vpn-pptp-pass'),
 };
-
-const vpnProto = () => vpnField.protocol().value || 'wireguard';
-
-// Muestra solo los campos del protocolo elegido.
-function vpnApplyProtoVisibility(proto) {
-  document.querySelectorAll('#vpn-form .vpn-group').forEach(g => {
-    g.hidden = !g.dataset.proto.split(' ').includes(proto);
-  });
-}
 
 function vpnFillForm(p) {
   p = p || {};
-  const proto = p.protocol || 'wireguard';
   vpnField.id().value = p.id || '';
-  vpnField.protocol().value = proto;
   vpnField.name().value = p.name || '';
-  // WireGuard
   vpnField.pubkey().value = p.publicKey || '';
   vpnField.address().value = p.address || '';
   vpnField.endpoint().value = p.endpoint || '';
@@ -427,37 +413,22 @@ function vpnFillForm(p) {
   vpnField.allowed().value = p.allowedIPs || '';
   vpnField.dns().value = p.dns || '';
   vpnField.keepalive().value = p.keepalive || '';
-  vpnField.psk().value = '';
+  vpnField.psk().value = ''; // nunca se muestra; vacío = no cambiar
   vpnField.psk().placeholder = p.hasPreshared ? '•••••• (guardada; escribe para cambiar)' : 'dejar vacío si no se usa';
-  // OpenVPN
-  vpnField.ovpn().value = '';
-  vpnField.ovpn().placeholder = p.hasConfig ? '•••••• (configuración guardada; pega de nuevo para cambiarla)' : 'client\ndev tun\nproto udp\nremote mi.servidor.com 1194\n...';
-  vpnField.ovUser().value = (proto === 'openvpn' ? (p.username || '') : '');
-  vpnField.ovPass().value = '';
-  vpnField.ovPass().placeholder = p.hasPassword ? '•••••• (guardada)' : '';
-  // PPTP
-  vpnField.pptpGw().value = p.gateway || '';
-  vpnField.pptpUser().value = (proto === 'pptp' ? (p.username || '') : '');
-  vpnField.pptpPass().value = '';
-  vpnField.pptpPass().placeholder = p.hasPassword ? '•••••• (guardada)' : '';
-  vpnApplyProtoVisibility(proto);
 }
 
 function vpnReadForm() {
-  const proto = vpnProto();
-  const base = { id: vpnField.id().value || undefined, protocol: proto, name: vpnField.name().value };
-  if (proto === 'wireguard') {
-    return {
-      ...base,
-      address: vpnField.address().value, endpoint: vpnField.endpoint().value,
-      peerPublicKey: vpnField.peerpub().value, allowedIPs: vpnField.allowed().value,
-      dns: vpnField.dns().value, keepalive: vpnField.keepalive().value, presharedKey: vpnField.psk().value,
-    };
-  }
-  if (proto === 'openvpn') {
-    return { ...base, ovpnConfig: vpnField.ovpn().value, username: vpnField.ovUser().value, password: vpnField.ovPass().value };
-  }
-  return { ...base, gateway: vpnField.pptpGw().value, username: vpnField.pptpUser().value, password: vpnField.pptpPass().value };
+  return {
+    id: vpnField.id().value || undefined,
+    name: vpnField.name().value,
+    address: vpnField.address().value,
+    endpoint: vpnField.endpoint().value,
+    peerPublicKey: vpnField.peerpub().value,
+    allowedIPs: vpnField.allowed().value,
+    dns: vpnField.dns().value,
+    keepalive: vpnField.keepalive().value,
+    presharedKey: vpnField.psk().value,
+  };
 }
 
 function renderVpnList() {
@@ -465,13 +436,9 @@ function renderVpnList() {
   const st = state.vpn.state || {};
   ul.replaceChildren(...state.vpn.profiles.map(p => {
     const connected = st.status === 'connected' && st.profileId === p.id;
-    const protoLabel = { wireguard: 'WireGuard', openvpn: 'OpenVPN', pptp: 'PPTP' }[p.protocol || 'wireguard'];
     const li = el('li', { className: 'vpn-item' + (p.id === state.vpnSelected ? ' sel' : '') + (connected ? ' on' : '') },
       el('span', { className: 'vpn-dot' }),
-      el('div', { className: 'vpn-item-info' },
-        el('div', { className: 'vpn-item-name', textContent: p.name || '(sin nombre)' }),
-        el('div', { className: 'vpn-item-proto', textContent: protoLabel }),
-      ),
+      el('span', { className: 'vpn-item-name', textContent: p.name || '(sin nombre)' }),
     );
     li.onclick = () => { state.vpnSelected = p.id; state.vpnRefill = true; renderVpn(); };
     return li;
@@ -493,8 +460,7 @@ function renderVpnStatus() {
   ind.style.color = color;
   let extra = '';
   if (st.status === 'connected') {
-    if (st.protocol === 'wireguard') extra = st.handshake ? ' · handshake ok' : ' · negociando…';
-    else extra = ' · activo (todo el sistema)';
+    extra = st.handshake ? ` · handshake ok` : ' · negociando…';
   }
   const prof = state.vpn.profiles.find(p => p.id === st.profileId);
   txt.textContent = label + (prof && st.status !== 'idle' ? ` (${prof.name})` : '') + extra;
@@ -521,10 +487,9 @@ function renderVpn() {
   const isThis = st.profileId === state.vpnSelected;
   const connected = st.status === 'connected' && isThis;
   const connecting = st.status === 'connecting' && isThis;
-  const needHelper = (sel ? sel.protocol : vpnProto()) === 'wireguard';
 
   $('vpn-connect').hidden = connected;
-  $('vpn-connect').disabled = !isSaved || connecting || (needHelper && !state.vpn.available);
+  $('vpn-connect').disabled = !isSaved || !state.vpn.available || connecting;
   $('vpn-connect').textContent = connecting ? 'Conectando…' : 'Conectar';
   $('vpn-disconnect').hidden = !(connected || connecting);
   $('vpn-delete').hidden = !isSaved;
@@ -547,15 +512,7 @@ $('vpn-regen').onclick = () => {
   browser.vpnSave({ ...vpnReadForm(), regenerate: true });
 };
 $('vpn-copy-pub').onclick = () => { if (vpnField.pubkey().value) navigator.clipboard?.writeText(vpnField.pubkey().value); };
-vpnField.protocol().onchange = () => { vpnApplyProtoVisibility(vpnProto()); renderVpn(); };
-$('vpn-connect').onclick = () => {
-  if (!state.vpnSelected) return;
-  const sel = state.vpn.profiles.find(p => p.id === state.vpnSelected);
-  // PPTP es inseguro: advertencia «acepto el riesgo» antes de conectar
-  if (sel && sel.protocol === 'pptp' &&
-      !confirm('⚠️ PPTP es un protocolo INSEGURO: su cifrado (MS-CHAPv2 / MPPE) está roto y puede ser interceptado. No lo uses para información sensible; úsalo solo si no hay otra opción.\n\n¿Aceptás el riesgo y querés conectar igual?')) return;
-  browser.vpnConnect(state.vpnSelected);
-};
+$('vpn-connect').onclick = () => { if (state.vpnSelected) browser.vpnConnect(state.vpnSelected); };
 $('vpn-disconnect').onclick = () => browser.vpnDisconnect();
 $('vpn-delete').onclick = () => {
   const sel = state.vpn.profiles.find(p => p.id === state.vpnSelected);

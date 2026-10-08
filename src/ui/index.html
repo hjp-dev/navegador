@@ -99,9 +99,8 @@
     </div>
     <div id="vpn-body">
       <p id="vpn-unavailable" class="vpn-note" hidden>
-        El componente del túnel <b>WireGuard</b> (wg-helper) no está disponible en esta ejecución
-        (sí viene en los instaladores de Windows y Ubuntu). OpenVPN y PPTP no lo necesitan: los
-        gestiona el sistema operativo.
+        El componente del túnel no está disponible en esta versión. Se incluye en los instaladores
+        de Windows y Ubuntu.
       </p>
       <div id="vpn-layout">
         <aside id="vpn-list-col">
@@ -114,75 +113,35 @@
         <section id="vpn-form-col">
           <form id="vpn-form">
             <input type="hidden" id="vpn-id">
+            <label>Nombre <input id="vpn-name" type="text" spellcheck="false" placeholder="MikroTik oficina"></label>
+
+            <div class="vpn-keys">
+              <label>Clave pública (pegar en el MikroTik/servidor)
+                <span class="vpn-pub-row">
+                  <input id="vpn-pubkey" type="text" readonly placeholder="Se genera al crear el perfil">
+                  <button id="vpn-copy-pub" type="button" class="text" title="Copiar">Copiar</button>
+                  <button id="vpn-regen" type="button" class="text" title="Generar un par de claves nuevo">Regenerar</button>
+                </span>
+              </label>
+            </div>
+
+            <label>Dirección del cliente en el túnel <input id="vpn-address" type="text" spellcheck="false" placeholder="10.9.0.2/32"></label>
+            <label>Endpoint (host:puerto del servidor) <input id="vpn-endpoint" type="text" spellcheck="false" placeholder="mi.servidor.com:13231"></label>
+            <label>Clave pública del peer (servidor) <input id="vpn-peerpub" type="text" spellcheck="false" placeholder="clave del MikroTik"></label>
+            <label>Redes permitidas (AllowedIPs)
+              <input id="vpn-allowed" type="text" spellcheck="false" placeholder="10.0.0.0/8, 192.168.0.0/16">
+            </label>
+            <label>DNS (opcional) <input id="vpn-dns" type="text" spellcheck="false" placeholder="1.1.1.1"></label>
             <div class="vpn-two">
-              <label>Tipo de túnel
-                <select id="vpn-protocol">
-                  <option value="wireguard">WireGuard (solo navegador, sin admin)</option>
-                  <option value="openvpn">OpenVPN (todo el sistema, requiere admin)</option>
-                  <option value="pptp">PPTP (inseguro, todo el sistema)</option>
-                </select>
-              </label>
-              <label>Nombre <input id="vpn-name" type="text" spellcheck="false" placeholder="MikroTik oficina"></label>
+              <label>Preshared key (opcional) <input id="vpn-psk" type="text" spellcheck="false" placeholder="dejar vacío si no se usa"></label>
+              <label>Keepalive (s) <input id="vpn-keepalive" type="number" min="0" placeholder="25"></label>
             </div>
-
-            <!-- ====== WireGuard ====== -->
-            <div class="vpn-group" data-proto="wireguard">
-              <div class="vpn-keys">
-                <label>Clave pública (pegar en el MikroTik/servidor)
-                  <span class="vpn-pub-row">
-                    <input id="vpn-pubkey" type="text" readonly placeholder="Se genera al crear el perfil">
-                    <button id="vpn-copy-pub" type="button" class="text" title="Copiar">Copiar</button>
-                    <button id="vpn-regen" type="button" class="text" title="Generar un par de claves nuevo">Regenerar</button>
-                  </span>
-                </label>
-              </div>
-              <label>Dirección del cliente en el túnel <input id="vpn-address" type="text" spellcheck="false" placeholder="10.9.0.2/32"></label>
-              <label>Endpoint (host:puerto del servidor) <input id="vpn-endpoint" type="text" spellcheck="false" placeholder="mi.servidor.com:13231"></label>
-              <label>Clave pública del peer (servidor) <input id="vpn-peerpub" type="text" spellcheck="false" placeholder="clave del MikroTik"></label>
-              <label>Redes permitidas (AllowedIPs)
-                <input id="vpn-allowed" type="text" spellcheck="false" placeholder="10.0.0.0/8, 192.168.0.0/16">
-              </label>
-              <label>DNS (opcional) <input id="vpn-dns" type="text" spellcheck="false" placeholder="1.1.1.1"></label>
-              <div class="vpn-two">
-                <label>Preshared key (opcional) <input id="vpn-psk" type="text" spellcheck="false" placeholder="dejar vacío si no se usa"></label>
-                <label>Keepalive (s) <input id="vpn-keepalive" type="number" min="0" placeholder="25"></label>
-              </div>
-              <p class="vpn-help">
-                Las <b>Redes permitidas</b> son las subredes de tus antenas/equipos que quieres alcanzar
-                por el túnel (p. ej. <code>10.0.0.0/8</code>). Mientras el túnel está conectado, el tráfico
-                del navegador hacia esas redes sale por él (solo el navegador). Para detectar antenas, abre
-                <b>Antenas → Escanear subred</b> con la subred remota.
-              </p>
-            </div>
-
-            <!-- ====== OpenVPN ====== -->
-            <div class="vpn-group" data-proto="openvpn" hidden>
-              <label>Configuración .ovpn (pega aquí el archivo que te da el servidor)
-                <textarea id="vpn-ovpn" rows="7" spellcheck="false" placeholder="client&#10;dev tun&#10;proto udp&#10;remote mi.servidor.com 1194&#10;..."></textarea>
-              </label>
-              <div class="vpn-two">
-                <label>Usuario (si el .ovpn lo pide) <input id="vpn-ov-user" type="text" spellcheck="false" autocomplete="off"></label>
-                <label>Contraseña <input id="vpn-ov-pass" type="password" autocomplete="off"></label>
-              </div>
-            </div>
-
-            <!-- ====== PPTP ====== -->
-            <div class="vpn-group" data-proto="pptp" hidden>
-              <label>Servidor (gateway) <input id="vpn-pptp-gw" type="text" spellcheck="false" placeholder="mi.servidor.com o 190.x.x.x"></label>
-              <div class="vpn-two">
-                <label>Usuario <input id="vpn-pptp-user" type="text" spellcheck="false" autocomplete="off"></label>
-                <label>Contraseña <input id="vpn-pptp-pass" type="password" autocomplete="off"></label>
-              </div>
-            </div>
-
-            <!-- Aviso para túneles del sistema -->
-            <p class="vpn-syswarn vpn-group" data-proto="openvpn pptp" hidden>
-              ⚠️ Este túnel lo gestiona el <b>sistema operativo</b>: afecta a <b>toda la PC</b> (no solo al
-              navegador) y puede pedir permisos de administrador. En Ubuntu usa NetworkManager
-              (instala <code>network-manager-openvpn</code> / <code>network-manager-pptp</code> y sus
-              complementos <code>-gnome</code>). En Windows, OpenVPN necesita el cliente OpenVPN instalado.
+            <p class="vpn-help">
+              Las <b>Redes permitidas</b> son las subredes de tus antenas/equipos que quieres alcanzar
+              por el túnel (p. ej. <code>10.0.0.0/8</code>). Mientras el túnel está conectado, el tráfico
+              del navegador hacia esas redes sale por él. Para barrer y detectar antenas, abre
+              <b>Antenas → Escanear subred</b> con la subred remota.
             </p>
-
             <div class="vpn-actions">
               <button type="submit" class="primary">Guardar</button>
               <button id="vpn-connect" type="button" class="primary">Conectar</button>

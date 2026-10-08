@@ -16,7 +16,6 @@ const fs = require('fs');
 const http = require('http');
 const crypto = require('crypto');
 const { spawn, execFileSync } = require('child_process');
-const systemTunnel = require('./system-tunnel');
 
 const SOCKS_PORT = 25345;
 const CONTROL_PORT = 25346;
@@ -30,8 +29,7 @@ let data = { profiles: [] };
 let onState = () => {};
 let proc = null;
 let pollTimer = null;
-let sysPollTimer = null;
-let state = { status: 'idle', profileId: null, protocol: null, socks: null, control: null, handshake: 0, error: '' };
+let state = { status: 'idle', profileId: null, socks: null, control: null, handshake: 0, error: '' };
 
 function load() {
   try { data = { profiles: [], ...JSON.parse(fs.readFileSync(file(), 'utf8')) }; } catch { data = { profiles: [] }; }
@@ -83,60 +81,45 @@ function genKeyPair() {
 }
 
 // ---------- Perfiles ----------
-// Vista para la interfaz: sin secretos (sí la clave pública de WireGuard, para pegarla en el peer).
+// Vista para la interfaz: sin la clave privada (sí la pública, para pegarla en el MikroTik).
 function sanitize(p) {
   return {
-    id: p.id, name: p.name, protocol: p.protocol || 'wireguard',
-    // WireGuard
-    publicKey: p.publicKey, address: p.address, dns: p.dns,
+    id: p.id, name: p.name, publicKey: p.publicKey, address: p.address, dns: p.dns,
     endpoint: p.endpoint, peerPublicKey: p.peerPublicKey, allowedIPs: p.allowedIPs,
     keepalive: p.keepalive, mtu: p.mtu, hasPreshared: !!p.presharedKey,
-    // OpenVPN / PPTP (sistema)
-    gateway: p.gateway, username: p.username, hasConfig: !!p.ovpnConfig, hasPassword: !!p.password,
   };
 }
 function listProfiles() { return data.profiles.map(sanitize); }
 
-// Crea o actualiza un perfil según su protocolo.
+// Crea o actualiza un perfil. Si no trae clave privada, se genera un par nuevo.
 function saveProfile(input) {
   const p = input || {};
   let profile = p.id && data.profiles.find(x => x.id === p.id);
-  const proto = (p.protocol || (profile && profile.protocol) || 'wireguard');
   if (!profile) { profile = { id: newId() }; data.profiles.push(profile); }
-  profile.protocol = proto;
-  profile.name = String(p.name || 'Túnel');
 
-  if (proto === 'wireguard') {
-    profile.address = String(p.address || '').trim();
-    profile.dns = String(p.dns || '').trim();
-    profile.endpoint = String(p.endpoint || '').trim();
-    profile.peerPublicKey = String(p.peerPublicKey || '').trim();
-    profile.allowedIPs = String(p.allowedIPs || '').trim();
-    profile.keepalive = Number(p.keepalive) || 25;
-    profile.mtu = Number(p.mtu) || 1420;
-    // Claves: se regeneran si lo pide, o si el perfil aún no tiene ninguna.
-    if (p.regenerate || !profile.privateKey) {
-      const kp = genKeyPair();
-      const encPriv = encrypt(kp.privateKey);
-      profile.privateKey = encPriv.value;
-      profile.enc = encPriv.enc;
-      profile.publicKey = kp.publicKey;
-    }
-    if (p.presharedKey !== undefined) {
-      const psk = String(p.presharedKey || '').trim();
-      if (psk) { const e = encrypt(psk); profile.presharedKey = e.value; profile.pskEnc = e.enc; }
-      else { delete profile.presharedKey; delete profile.pskEnc; }
-    }
-  } else {
-    // OpenVPN / PPTP: túnel gestionado por el sistema
-    profile.gateway = String(p.gateway || '').trim();
-    profile.username = String(p.username || '').trim();
-    if (p.password !== undefined && String(p.password) !== '') {
-      const e = encrypt(String(p.password)); profile.password = e.value; profile.pwEnc = e.enc;
-    }
-    if (proto === 'openvpn' && p.ovpnConfig !== undefined && String(p.ovpnConfig).trim() !== '') {
-      const e = encrypt(String(p.ovpnConfig)); profile.ovpnConfig = e.value; profile.ovpnEnc = e.enc;
-    }
+  profile.name = String(p.name || 'Túnel');
+  profile.address = String(p.address || '').trim();
+  profile.dns = String(p.dns || '').trim();
+  profile.endpoint = String(p.endpoint || '').trim();
+  profile.peerPublicKey = String(p.peerPublicKey || '').trim();
+  profile.allowedIPs = String(p.allowedIPs || '').trim();
+  profile.keepalive = Number(p.keepalive) || 25;
+  profile.mtu = Number(p.mtu) || 1420;
+
+  // Claves: se regeneran si lo pide, o si el perfil aún no tiene ninguna.
+  if (p.regenerate || !profile.privateKey) {
+    const kp = genKeyPair();
+    const encPriv = encrypt(kp.privateKey);
+    profile.privateKey = encPriv.value;
+    profile.enc = encPriv.enc;
+    profile.publicKey = kp.publicKey;
+  }
+
+  // Clave precompartida opcional (cifrada aparte).
+  if (p.presharedKey !== undefined) {
+    const psk = String(p.presharedKey || '').trim();
+    if (psk) { const e = encrypt(psk); profile.presharedKey = e.value; profile.pskEnc = e.enc; }
+    else { delete profile.presharedKey; delete profile.pskEnc; }
   }
   persist();
   return profile.id;
@@ -155,8 +138,6 @@ function setState(patch) { state = { ...state, ...patch }; onState(); }
 function connect(id) {
   const profile = data.profiles.find(p => p.id === id);
   if (!profile) { setState({ status: 'error', error: 'perfil no encontrado' }); return; }
-  const proto = profile.protocol || 'wireguard';
-  if (proto !== 'wireguard') return connectSystem(profile);
   const bin = helperPath();
   if (!bin) { setState({ status: 'error', error: 'El componente del túnel (wg-helper) no está disponible en esta instalación.' }); return; }
   disconnect();
@@ -186,7 +167,7 @@ function connect(id) {
     setState({ status: 'error', profileId: id, error: String(e.message || e) }); return;
   }
 
-  setState({ status: 'connecting', profileId: id, protocol: 'wireguard', socks: null, control: `127.0.0.1:${CONTROL_PORT}`, handshake: 0, error: '' });
+  setState({ status: 'connecting', profileId: id, socks: null, control: `127.0.0.1:${CONTROL_PORT}`, handshake: 0, error: '' });
 
   proc = spawn(bin, ['-config', cfgPath], { stdio: ['pipe', 'pipe', 'pipe'] });
   let started = false;
@@ -212,55 +193,14 @@ function connect(id) {
   });
 }
 
-// ---------- Túneles del sistema (OpenVPN / PPTP) ----------
-function connectSystem(profile) {
-  const secrets = {
-    username: profile.username || '',
-    password: profile.password ? decrypt(profile.password, profile.pwEnc) : '',
-    ovpnConfig: profile.ovpnConfig ? decrypt(profile.ovpnConfig, profile.ovpnEnc) : '',
-  };
-  if (profile.protocol === 'openvpn' && !secrets.ovpnConfig) {
-    setState({ status: 'error', profileId: profile.id, protocol: 'openvpn', error: 'Falta la configuración .ovpn.' });
-    return;
-  }
-  if (profile.protocol === 'pptp' && !profile.gateway) {
-    setState({ status: 'error', profileId: profile.id, protocol: 'pptp', error: 'Falta el servidor (gateway) del PPTP.' });
-    return;
-  }
-  setState({ status: 'connecting', profileId: profile.id, protocol: profile.protocol, socks: null, handshake: 0, error: '' });
-  systemTunnel.connect(profile, secrets).then((r) => {
-    if (state.profileId !== profile.id) return; // se canceló entretanto
-    if (r.ok) { setState({ status: 'connected', profileId: profile.id, protocol: profile.protocol, handshake: 1 }); startSysPolling(profile); }
-    else setState({ status: 'error', profileId: profile.id, protocol: profile.protocol, error: r.error || 'No se pudo conectar.' });
-  }).catch((e) => setState({ status: 'error', profileId: profile.id, protocol: profile.protocol, error: String(e.message || e) }));
-}
-
-function startSysPolling(profile) {
-  stopSysPolling();
-  sysPollTimer = setInterval(async () => {
-    try {
-      const up = await systemTunnel.isActive(profile.id);
-      if (!up && state.status === 'connected' && state.profileId === profile.id) {
-        stopSysPolling();
-        setState({ status: 'idle', profileId: null, protocol: null, error: '' });
-      }
-    } catch {}
-  }, 5000);
-}
-function stopSysPolling() { if (sysPollTimer) { clearInterval(sysPollTimer); sysPollTimer = null; } }
-
 function disconnect() {
   stopPolling();
-  stopSysPolling();
-  const current = state.profileId != null && (state.protocol === 'openvpn' || state.protocol === 'pptp')
-    ? data.profiles.find(p => p.id === state.profileId) : null;
   if (proc) {
     const p = proc; proc = null;
     try { p.stdin.end(); } catch {}
     try { p.kill(); } catch {}
   }
-  if (current) { systemTunnel.disconnect(current).catch(() => {}); }
-  setState({ status: 'idle', profileId: null, protocol: null, socks: null, handshake: 0, error: '' });
+  setState({ status: 'idle', profileId: null, socks: null, handshake: 0, error: '' });
 }
 
 function cleanup(cfgPath) { try { fs.unlinkSync(cfgPath); } catch {} }
