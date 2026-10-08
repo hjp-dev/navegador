@@ -578,7 +578,10 @@ ui.on('scan-devices', () => runScan(() => discovery.scan(3000)));
 // consulta UDP desde dentro del túnel); si no, se hace directo desde esta PC.
 ui.on('scan-range', (_e, spec) => runScan(() => {
   const text = String(spec || '');
-  if (vpn.getState().status === 'connected') {
+  const st = vpn.getState();
+  // Con WireGuard el barrido sale por el ayudante (dentro del túnel userspace). Con OpenVPN/PPTP
+  // el sistema ya enruta hacia el túnel, así que el barrido normal (unicast) desde esta PC sirve.
+  if (st.status === 'connected' && st.protocol === 'wireguard') {
     return vpn.discover(discovery.parseTargets(text), discovery.parseReply);
   }
   return discovery.scanRange(text, 5000);
@@ -635,7 +638,8 @@ function applyVpnProxy(on) {
 
 function sendVpn() {
   const state = vpn.getState();
-  applyVpnProxy(state.status === 'connected');
+  // El proxy SOCKS solo aplica al túnel WireGuard (userspace). OpenVPN/PPTP los enruta el sistema.
+  applyVpnProxy(state.status === 'connected' && state.protocol === 'wireguard');
   send('vpn', { profiles: vpn.listProfiles(), state, available: vpn.helperAvailable() });
 }
 

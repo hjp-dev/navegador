@@ -139,10 +139,30 @@ subred** y escribe la subred remota (p. ej. `10.0.0.0/24`): el barrido se hace *
 túnel** (unicast, equipo por equipo, porque el *broadcast* no cruza un VPN). Al dar clic en una IP
 se abre el equipo en una pestaña nueva, igual que en la red local.
 
-> **Experimental.** WireGuard es el primer túnel soportado. OpenVPN y PPTP (de MikroTik/Windows)
-> quedan para una etapa siguiente; el PPTP irá detrás de una advertencia «acepto el riesgo» por ser
-> inseguro. Las claves privadas se guardan cifradas con el llavero del sistema (igual que las
-> contraseñas).
+### OpenVPN y PPTP (túneles gestionados por el sistema)
+
+Además de WireGuard, el selector **Tipo de túnel** permite **OpenVPN** y **PPTP**. A diferencia de
+WireGuard, estos **no** pueden ser «solo para el navegador»: necesitan una interfaz de red del
+sistema, así que los **gestiona el sistema operativo** y **afectan a toda la PC** mientras están
+conectados (y pueden pedir permisos de administrador).
+
+- **OpenVPN**: pega el contenido del archivo `.ovpn` que te da el servidor y, si hace falta,
+  usuario y contraseña. En **Ubuntu** se usa NetworkManager: instala
+  `sudo apt install network-manager-openvpn network-manager-openvpn-gnome`. En **Windows** necesita
+  el cliente **OpenVPN** instalado (y ejecutar como administrador para crear el adaptador).
+- **PPTP**: servidor (gateway), usuario y contraseña. En **Ubuntu** instala
+  `sudo apt install network-manager-pptp network-manager-pptp-gnome`; en **Windows** usa la VPN
+  integrada. ⚠️ **PPTP es inseguro** (su cifrado MS-CHAPv2/MPPE está roto): al **Conectar** aparece
+  una advertencia **«acepto el riesgo»** y solo continúa si la aceptas. Úsalo solo si no hay otra
+  opción.
+
+Con OpenVPN/PPTP, como el enrutado lo hace el sistema, la detección de antenas funciona con el
+barrido normal (**Antenas → Escanear subred**, unicast) desde la PC; no usa el componente de
+WireGuard.
+
+> **Experimental.** Las claves privadas y contraseñas se guardan cifradas con el llavero del
+> sistema (igual que las contraseñas del navegador). WireGuard es el único túnel solo-navegador;
+> OpenVPN y PPTP son túneles del sistema.
 
 ## Uso
 
@@ -234,7 +254,8 @@ src/
   page-preload.js  Se ejecuta en las páginas: detecta y rellena formularios de inicio de sesión
   ubnt-discovery.js Escaneo de equipos Ubiquiti en la red local (UDP 10001)
   ubnt-status.js    Lee señal/CCQ de cada equipo (status.cgi de airOS)
-  vpn.js            Cliente VPN WireGuard (perfiles cifrados y manejo del túnel)
+  vpn.js            Cliente VPN (perfiles cifrados; WireGuard, OpenVPN y PPTP)
+  system-tunnel.js  Túneles del sistema (OpenVPN/PPTP) vía NetworkManager/VPN de Windows
   ui/            Interfaz (barra de pestañas, navegación y panel lateral)
 wg-helper/       Ayudante del túnel WireGuard en Go (userspace: SOCKS5 + descubrimiento)
 ```

@@ -527,3 +527,20 @@ progress {
 .vpn-actions { display: flex; gap: 10px; align-items: center; margin-top: 4px; flex-wrap: wrap; }
 .vpn-err { color: #d93025; font-size: 13px; }
 button.danger { color: #d93025; }
+
+/* ---------- VPN: campos por protocolo ---------- */
+#vpn-form select {
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--input); color: var(--text); font: inherit;
+}
+#vpn-form textarea {
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--input); color: var(--text);
+  font: 12px ui-monospace, "Cascadia Code", Consolas, monospace; resize: vertical; min-height: 90px;
+}
+.vpn-group { display: flex; flex-direction: column; gap: 12px; }
+.vpn-group[hidden] { display: none; }
+.vpn-item-info { display: flex; flex-direction: column; min-width: 0; }
+.vpn-item-proto { font-size: 11px; color: var(--muted); }
+.vpn-syswarn { background: rgba(249,171,0,.12); border: 1px solid #f9ab00; color: var(--text); padding: 10px 12px; border-radius: 6px; font-size: 12px; line-height: 1.5; }
+.vpn-syswarn code { background: var(--input); padding: 1px 4px; border-radius: 3px; }
