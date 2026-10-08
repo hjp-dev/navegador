@@ -20,8 +20,8 @@
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       padding: 24px; gap: 28px;
     }
-    .logo { font-size: 64px; font-weight: 700; letter-spacing: -2px; display: flex; align-items: center; gap: 10px; }
-    .logo .inf { color: var(--accent); }
+    .logo { font-size: 64px; font-weight: 700; letter-spacing: -2px; display: flex; align-items: center; gap: 16px; }
+    .logo .inf { width: 96px; height: 54px; flex: none; }
     .logo .name { color: var(--text); }
     form { width: 100%; max-width: 560px; }
     .searchbox {
@@ -52,7 +52,15 @@
   </style>
 </head>
 <body>
-  <div class="logo"><span class="inf">∞</span><span class="name">Navegador</span></div>
+  <div class="logo">
+    <svg class="inf" viewBox="0 0 512 288" aria-hidden="true">
+      <g fill="none" stroke-width="42" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M256 144 C 210 82 148 66 110 84 C 56 108 56 180 110 204 C 148 222 210 206 256 144" stroke="#CB1E20"/>
+        <path d="M256 144 C 302 82 364 66 402 84 C 456 108 456 180 402 204 C 364 222 302 206 256 144" stroke="#1620C4"/>
+      </g>
+    </svg>
+    <span class="name">Navegador</span>
+  </div>
 
   <form id="search" action="https://www.google.com/search" method="GET">
     <div class="searchbox">
