@@ -1,7 +1,7 @@
 {
-  "name": "navegador",
+  "name": "infinity",
   "version": "1.1.1",
-  "description": "Navegador web minimalista basado en Chromium (Electron): pestañas, atrás/adelante, favoritos y descargas.",
+  "description": "Infinity: navegador web minimalista basado en Chromium (Electron) para redes internas (pestañas, favoritos, descargas y antenas Ubiquiti).",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -13,8 +13,8 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "dev.hjp.navegador",
-    "productName": "Navegador",
+    "appId": "dev.hjp.infinity",
+    "productName": "Infinity",
     "files": [
       "src/**/*",
       "package.json"
@@ -25,8 +25,9 @@
         "AppImage"
       ],
       "category": "Network;WebBrowser",
+      "executableName": "infinity",
       "maintainer": "hjp-dev <hjp-dev@users.noreply.github.com>",
-      "synopsis": "Navegador web minimalista para redes internas",
+      "synopsis": "Infinity: navegador minimalista para redes internas",
       "extraResources": [
         {
           "from": "build/linux/apparmor-profile",

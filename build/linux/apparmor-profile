@@ -2,8 +2,8 @@
 abi <abi/4.0>,
 include <tunables/global>
 
-profile navegador /opt/Navegador/navegador flags=(unconfined) {
+profile infinity /opt/Infinity/infinity flags=(unconfined) {
   userns,
 
-  include if exists <local/navegador>
+  include if exists <local/infinity>
 }

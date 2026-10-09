@@ -1,6 +1,6 @@
-# Navegador
+# Infinity
 
-Navegador web minimalista basado en Chromium (usando [Electron](https://www.electronjs.org/)).
+Infinity es un navegador web minimalista basado en Chromium (usando [Electron](https://www.electronjs.org/)).
 Solo tiene lo indispensable:
 
 - **Pestañas**: abrir, cerrar (también con clic central) y cambiar entre ellas. Los enlaces que abren ventana nueva se abren en una pestaña.
@@ -126,8 +126,8 @@ Cada vez que se suben cambios a GitHub, la acción **Instaladores** genera los i
 Windows y Ubuntu. Para descargarlos: pestaña **Actions** del repositorio → última ejecución de
 *Instaladores* → sección **Artifacts**:
 
-- `Navegador-Setup-Windows`: contiene `Navegador Setup x.y.z.exe`.
-- `Navegador-Ubuntu`: contiene `navegador_x.y.z_amd64.deb` y `Navegador-x.y.z.AppImage`.
+- `Infinity-Setup-Windows`: contiene `Infinity Setup x.y.z.exe`.
+- `Infinity-Ubuntu`: contiene `infinity_x.y.z_amd64.deb` y `Infinity-x.y.z.AppImage`.
 
 Si subes una etiqueta (`git tag v1.0.0 && git push --tags`), los instaladores se publican
 también en la sección **Releases**.
@@ -142,18 +142,18 @@ firmado: pulsa *Más información* → *Ejecutar de todas formas*.
 Instala el paquete `.deb` (recomendado) desde una terminal en la carpeta donde lo descargaste:
 
 ```bash
-sudo apt install ./navegador_1.0.0_amd64.deb
+sudo apt install ./infinity_1.1.1_amd64.deb
 ```
 
-Queda en el menú de aplicaciones como **Navegador** (y se abre con `navegador` desde la terminal).
-Para desinstalarlo: `sudo apt remove navegador`.
+Queda en el menú de aplicaciones como **Infinity** (y se abre con `infinity` desde la terminal).
+Para desinstalarlo: `sudo apt remove infinity`.
 
 En Ubuntu 23.10 y posteriores el paquete instala además un perfil de AppArmor
-(`/etc/apparmor.d/navegador`), igual que hacen Chrome o VS Code, para que el aislamiento
+(`/etc/apparmor.d/infinity`), igual que hacen Chrome o VS Code, para que el aislamiento
 de seguridad de Chromium funcione.
 
 Alternativa sin instalar: el `.AppImage` se ejecuta directamente
-(`chmod +x Navegador-1.0.0.AppImage && ./Navegador-1.0.0.AppImage`). En Ubuntu 22.04 o
+(`chmod +x Infinity-1.1.1.AppImage && ./Infinity-1.1.1.AppImage`). En Ubuntu 22.04 o
 posteriores necesita `sudo apt install libfuse2` (en 24.04: `libfuse2t64`).
 
 ### Crear un ejecutable localmente

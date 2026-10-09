@@ -259,7 +259,7 @@ function createWindow() {
     height: 800,
     minWidth: 500,
     minHeight: 300,
-    title: 'Navegador',
+    title: 'Infinity',
     backgroundColor: '#ffffff',
     autoHideMenuBar: true, // el menú solo existe para los atajos de teclado
     icon: path.join(__dirname, 'icon.png'),
@@ -292,7 +292,7 @@ function buildMenu() {
   const wc = () => activeTab()?.view.webContents;
   const template = [
     {
-      label: 'Navegador',
+      label: 'Infinity',
       submenu: [
         { label: 'Nueva pestaña', accelerator: 'CmdOrCtrl+T', click: () => { createTab(); focusAddress(); } },
         { label: 'Cerrar pestaña', accelerator: 'CmdOrCtrl+W', click: () => closeTab(activeId) },

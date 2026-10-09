@@ -2,12 +2,12 @@
 # Script de desinstalación del paquete .deb
 
 if type update-alternatives >/dev/null 2>&1; then
-    update-alternatives --remove 'navegador' '/opt/Navegador/navegador' || true
+    update-alternatives --remove 'infinity' '/opt/Infinity/infinity' || true
 else
-    rm -f '/usr/bin/navegador'
+    rm -f '/usr/bin/infinity'
 fi
 
-APPARMOR_PROFILE_TARGET='/etc/apparmor.d/navegador'
+APPARMOR_PROFILE_TARGET='/etc/apparmor.d/infinity'
 if [ -f "$APPARMOR_PROFILE_TARGET" ]; then
     if hash apparmor_parser 2>/dev/null; then
         apparmor_parser --remove "$APPARMOR_PROFILE_TARGET" > /dev/null 2>&1 || true

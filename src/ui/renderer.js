@@ -60,7 +60,7 @@ function renderNavbar() {
   $('star').classList.toggle('on', starred);
   $('star').title = starred ? 'Quitar de favoritos (Ctrl+D)' : 'Añadir a favoritos (Ctrl+D)';
 
-  document.title = tab ? `${tab.title} - Navegador` : 'Navegador';
+  document.title = tab ? `${tab.title} - Infinity` : 'Infinity';
 
   const pwBadge = $('pw-badge'); if (pwBadge) pwBadge.hidden = !tab?.savedLogins;
 
